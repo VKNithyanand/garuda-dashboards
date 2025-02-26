@@ -1,7 +1,8 @@
-
 import React from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
+import { RealTimeMetrics } from "@/components/RealTimeMetrics";
+import { NLPQueryInput } from "@/components/NLPQueryInput";
 import {
   LineChart as LineChartIcon,
   BarChart as BarChartIcon,
@@ -174,6 +175,11 @@ const Index = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <RealTimeMetrics />
+          <NLPQueryInput />
         </div>
       </div>
     </DashboardLayout>
