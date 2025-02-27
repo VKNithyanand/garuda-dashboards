@@ -18,7 +18,6 @@ import {
   ChevronDown,
   Check,
   File,
-  FilePdf,
   FileSpreadsheet,
 } from "lucide-react";
 
@@ -170,7 +169,7 @@ const Reports = () => {
   const formatIcon = (format: string) => {
     switch (format) {
       case "PDF":
-        return <FilePdf className="h-4 w-4" />;
+        return <FileText className="h-4 w-4" />;
       case "Excel":
         return <FileSpreadsheet className="h-4 w-4" />;
       case "CSV":
