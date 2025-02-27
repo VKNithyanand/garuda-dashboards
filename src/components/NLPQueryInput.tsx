@@ -26,7 +26,7 @@ export const NLPQueryInput = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to process your query",

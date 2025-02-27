@@ -9,7 +9,108 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          last_active: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          last_active?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          last_active?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      insights: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          priority: string
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          priority: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          priority?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          amount: number
+          category: string
+          customer_id: string | null
+          id: string
+          product_name: string
+          transaction_date: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          customer_id?: string | null
+          id?: string
+          product_name: string
+          transaction_date?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          customer_id?: string | null
+          id?: string
+          product_name?: string
+          transaction_date?: string | null
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          dashboard_layout: Json | null
+          email_notifications: boolean | null
+          language: string | null
+          theme: string | null
+          user_id: string
+        }
+        Insert: {
+          dashboard_layout?: Json | null
+          email_notifications?: boolean | null
+          language?: string | null
+          theme?: string | null
+          user_id: string
+        }
+        Update: {
+          dashboard_layout?: Json | null
+          email_notifications?: boolean | null
+          language?: string | null
+          theme?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

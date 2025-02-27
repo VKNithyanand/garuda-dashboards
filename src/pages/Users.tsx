@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCustomers } from "@/lib/supabase-client";
 import { UserPlus, Filter, MoreVertical, Mail, UserCheck, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
   const { toast } = useToast();
@@ -58,7 +59,7 @@ const Users = () => {
       setNewUser({ name: "", email: "" });
       setIsAddingUser(false);
       
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error adding user",
         description: error.message,
