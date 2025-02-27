@@ -10,19 +10,15 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-interface BarChartComponentProps {
-  data: Array<{
-    name: string;
-    value: number;
-  }>;
-  title?: string;
+interface BarChartProps {
+  data: { name: string; value: number }[];
 }
 
-export const BarChartComponent = ({ data, title }: BarChartComponentProps) => {
+export const BarChartComponent: React.FC<BarChartProps> = ({ data }) => {
   return (
-    <div className="h-[300px]">
+    <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
+        <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="name"
@@ -38,8 +34,15 @@ export const BarChartComponent = ({ data, title }: BarChartComponentProps) => {
             axisLine={false}
             tickFormatter={(value) => `$${value}`}
           />
-          <Tooltip />
-          <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
+          <Tooltip
+            formatter={(value: number) => [`$${value}`, "Value"]}
+            labelFormatter={(name) => `Category: ${name}`}
+          />
+          <Bar
+            dataKey="value"
+            fill="#8884d8"
+            radius={[4, 4, 0, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
