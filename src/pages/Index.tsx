@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
 import { RealTimeMetrics } from "@/components/RealTimeMetrics";
 import { NLPQueryInput } from "@/components/NLPQueryInput";
+import { PredictiveAnalytics } from "@/components/PredictiveAnalytics";
 import { useSalesData, useCustomers, subscribeToSalesUpdates } from "@/lib/supabase-client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -224,9 +225,15 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Advanced Analytics Section */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <PredictiveAnalytics />
+          <NLPQueryInput />
+        </div>
+
+        {/* Real-Time Metrics Section */}
         <div className="grid gap-4 md:grid-cols-2">
           <RealTimeMetrics />
-          <NLPQueryInput />
         </div>
       </div>
     </DashboardLayout>
