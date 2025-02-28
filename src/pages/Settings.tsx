@@ -101,6 +101,9 @@ const Settings = () => {
   // Update local state when settings are loaded
   useEffect(() => {
     if (userSettings) {
+      // Using type assertion to handle dynamic properties
+      const settings = userSettings as any;
+      
       setPreferences({
         emailNotifications: userSettings.email_notifications,
         theme: userSettings.theme || "light",
@@ -108,7 +111,7 @@ const Settings = () => {
         dashboardLayout: userSettings.dashboard_layout && typeof userSettings.dashboard_layout === 'object' 
           ? (userSettings.dashboard_layout as any).layout || "default"
           : "default",
-        autoLogout: userSettings.auto_logout || 60,
+        autoLogout: settings.auto_logout || 60,
       });
     }
   }, [userSettings]);
