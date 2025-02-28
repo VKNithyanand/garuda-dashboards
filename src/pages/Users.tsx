@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCustomers } from "@/lib/supabase-client";
+import { useCustomers, useAddCustomer, useDeleteCustomer } from "@/lib/supabase-client";
 import { 
   UserPlus, 
   Filter, 
@@ -15,7 +16,10 @@ import {
   Bell, 
   CheckCircle2, 
   FileText,
-  Settings
+  Settings,
+  User,
+  Eye,
+  Upload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,8 +27,10 @@ import { supabase } from "@/integrations/supabase/client";
 const Users = () => {
   const { toast } = useToast();
   const { data: customers = [], isLoading, error, refetch } = useCustomers();
+  const addCustomer = useAddCustomer();
+  const deleteCustomer = useDeleteCustomer();
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "User" });
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -34,6 +40,16 @@ const Users = () => {
   });
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [showUserDetail, setShowUserDetail] = useState<string | null>(null);
+  const [userDetail, setUserDetail] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+    department: "",
+    location: "",
+    bio: ""
+  });
   
   // Converting customers to users with additional info
   const users = customers.map(customer => ({
@@ -43,6 +59,10 @@ const Users = () => {
     role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)], // Random role for demo
     status: Math.random() > 0.2 ? "Active" : "Away", // Random status
     lastActive: customer.last_active ? new Date(customer.last_active).toLocaleString() : "Never",
+    department: ["Engineering", "Marketing", "Sales", "Support"][Math.floor(Math.random() * 4)],
+    location: ["New York", "London", "Tokyo", "Berlin", "Sydney"][Math.floor(Math.random() * 5)],
+    phone: "+1 " + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 10000),
+    bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia."
   }));
   
   // Apply filters and search
@@ -60,6 +80,23 @@ const Users = () => {
     return matchesSearch && matchesStatus && matchesRole;
   });
   
+  useEffect(() => {
+    if (showUserDetail) {
+      const user = users.find(u => u.id === showUserDetail);
+      if (user) {
+        setUserDetail({
+          name: user.name,
+          email: user.email,
+          phone: user.phone || "",
+          role: user.role || "",
+          department: user.department || "",
+          location: user.location || "",
+          bio: ""
+        });
+      }
+    }
+  }, [showUserDetail, users]);
+  
   if (error) {
     toast({
       title: "Error loading users",
@@ -74,7 +111,7 @@ const Users = () => {
 
   const handleCancelAddUser = () => {
     setIsAddingUser(false);
-    setNewUser({ name: "", email: "" });
+    setNewUser({ name: "", email: "", role: "User" });
   };
 
   const handleSaveUser = async () => {
@@ -100,16 +137,10 @@ const Users = () => {
     
     setIsSubmittingUser(true);
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .insert([
-          { name: newUser.name, email: newUser.email },
-        ]);
-      
-      if (error) throw error;
-      
-      // Refresh the users list
-      refetch();
+      await addCustomer.mutateAsync({
+        name: newUser.name,
+        email: newUser.email
+      });
       
       toast({
         title: "User Added",
@@ -117,7 +148,7 @@ const Users = () => {
       });
       
       // Reset form
-      setNewUser({ name: "", email: "" });
+      setNewUser({ name: "", email: "", role: "User" });
       setIsAddingUser(false);
       
     } catch (error: any) {
@@ -180,6 +211,13 @@ const Users = () => {
         "delete": "deleted"
       };
       
+      if (action === "delete") {
+        // Actually delete the users
+        for (const userId of selectedUsers) {
+          await deleteCustomer.mutateAsync(userId);
+        }
+      }
+      
       toast({
         title: "Action Complete",
         description: `Successfully ${actionMap[action]} ${selectedUsers.length} user(s).`,
@@ -225,17 +263,9 @@ const Users = () => {
     }
   };
 
-  const deleteUser = async (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', userId);
-      
-      if (error) throw error;
-      
-      // Refresh the users list
-      refetch();
+      await deleteCustomer.mutateAsync(userId);
       
       toast({
         title: "User Deleted",
@@ -245,6 +275,29 @@ const Users = () => {
       toast({
         title: "Error deleting user",
         description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleSaveUserDetails = async () => {
+    if (!showUserDetail) return;
+    
+    try {
+      // In a real app, this would update the user details in the database
+      // For this demo, we'll just simulate it
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      toast({
+        title: "User Updated",
+        description: "User details have been updated successfully.",
+      });
+      
+      setShowUserDetail(null);
+    } catch (error: any) {
+      toast({
+        title: "Error updating user",
+        description: error.message || "Failed to update user details.",
         variant: "destructive",
       });
     }
@@ -270,10 +323,17 @@ const Users = () => {
                 className="w-full text-left px-4 py-2 text-sm hover:bg-accent rounded-md flex items-center"
                 onClick={() => {
                   setShowMenu(false);
-                  toast({
-                    title: "User Edited",
-                    description: `${userName}'s details are now being edited.`,
-                  });
+                  setShowUserDetail(userId);
+                }}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View User
+              </button>
+              <button 
+                className="w-full text-left px-4 py-2 text-sm hover:bg-accent rounded-md flex items-center"
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowUserDetail(userId);
                 }}
               >
                 <Settings className="h-4 w-4 mr-2" />
@@ -310,7 +370,7 @@ const Users = () => {
                 className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-md flex items-center"
                 onClick={() => {
                   setShowMenu(false);
-                  deleteUser(userId);
+                  handleDeleteUser(userId);
                 }}
               >
                 <X className="h-4 w-4 mr-2" />
@@ -319,6 +379,142 @@ const Users = () => {
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  // User Detail Modal
+  const UserDetailModal = () => {
+    if (!showUserDetail) return null;
+    
+    const user = users.find(u => u.id === showUserDetail);
+    if (!user) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
+        <div className="w-full max-w-3xl p-6 rounded-lg border border-input bg-background shadow-lg">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-medium">User Details</h3>
+            <button onClick={() => setShowUserDetail(null)}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-1/3 flex flex-col items-center">
+              <div className="relative mb-4">
+                <Avatar className="h-32 w-32">
+                  <AvatarFallback className="text-xl">
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-primary text-primary-foreground cursor-pointer">
+                  <Upload className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-lg font-medium">{user.name}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <div className="mt-2 inline-flex items-center">
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  user.status === "Active"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}>
+                  {user.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="md:w-2/3 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Name</label>
+                  <input
+                    type="text"
+                    value={userDetail.name}
+                    onChange={(e) => setUserDetail({...userDetail, name: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <input
+                    type="email"
+                    value={userDetail.email}
+                    onChange={(e) => setUserDetail({...userDetail, email: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Phone</label>
+                  <input
+                    type="tel"
+                    value={userDetail.phone}
+                    onChange={(e) => setUserDetail({...userDetail, phone: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Role</label>
+                  <select
+                    value={userDetail.role}
+                    onChange={(e) => setUserDetail({...userDetail, role: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Manager">Manager</option>
+                    <option value="User">User</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department</label>
+                  <input
+                    type="text"
+                    value={userDetail.department}
+                    onChange={(e) => setUserDetail({...userDetail, department: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Location</label>
+                  <input
+                    type="text"
+                    value={userDetail.location}
+                    onChange={(e) => setUserDetail({...userDetail, location: e.target.value})}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bio</label>
+                <textarea
+                  value={userDetail.bio}
+                  onChange={(e) => setUserDetail({...userDetail, bio: e.target.value})}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <button 
+                  onClick={() => setShowUserDetail(null)}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveUserDetails}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -427,6 +623,18 @@ const Users = () => {
                   placeholder="john@example.com"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="Admin">Admin</option>
+                  <option value="Manager">Manager</option>
+                  <option value="User">User</option>
+                </select>
               </div>
               <div className="flex justify-end gap-2">
                 <button 
@@ -655,6 +863,9 @@ const Users = () => {
           </div>
         </div>
       </div>
+
+      {/* User Detail Modal */}
+      {showUserDetail && <UserDetailModal />}
     </DashboardLayout>
   );
 };
