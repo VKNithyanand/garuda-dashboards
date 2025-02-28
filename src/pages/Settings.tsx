@@ -1,9 +1,11 @@
-
+<lov-code>
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useUpdateUserSettings, useUserSettings } from "@/lib/supabase-client";
+import { useSession, useSignOut, useResetPassword, useUploadProfileImage } from "@/lib/supabase-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Bell,
   Lock,
@@ -27,17 +29,30 @@ import {
   Upload,
   Camera,
   Download,
-  Mail
+  Mail,
+  Info,
+  FileText,
+  KeyRound,
+  CheckCircle2,
+  QrCode,
+  MessageCircle, 
+  Cloud,
+  Video,
+  Github,
+  Trello
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Settings = () => {
   const { toast } = useToast();
-  const [userId, setUserId] = useState<string | undefined>(undefined);
+  const { session } = useSession();
+  const isMobile = useIsMobile();
+  const userId = session?.user?.id;
   const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    avatar: "",
+    name: session?.user?.user_metadata?.name || "",
+    email: session?.user?.email || "",
+    phone: session?.user?.user_metadata?.phone || "",
+    avatar: session?.user?.user_metadata?.avatar_url || "",
   });
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -51,6 +66,14 @@ const Settings = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [showFaq, setShowFaq] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [passwordChange, setPasswordChange] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [availableLanguages] = useState([
     { code: "en", name: "English" },
     { code: "es", name: "Spanish" },
@@ -70,33 +93,24 @@ const Settings = () => {
     { value: 0, name: "Never" },
   ]);
   const [connectedApps] = useState([
-    { name: "Google Calendar", connected: true },
-    { name: "Microsoft Office", connected: false },
-    { name: "Slack", connected: true },
+    { name: "Google Calendar", connected: true, icon: <BarChart4 className="h-4 w-4" /> },
+    { name: "Microsoft Office", connected: false, icon: <FileText className="h-4 w-4" /> },
+    { name: "Slack", connected: true, icon: <MessageCircle className="h-4 w-4" /> },
+    { name: "Dropbox", connected: false, icon: <Download className="h-4 w-4" /> },
   ]);
-  
-  // Get the current user
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // Set default profile data based on user
-        setProfile({
-          name: user.user_metadata?.name || "",
-          email: user.email || "",
-          phone: user.user_metadata?.phone || "",
-          avatar: user.user_metadata?.avatar_url || "",
-        });
-      }
-    };
-    
-    getUser();
-  }, []);
+  const [availableIntegrations] = useState([
+    { name: "Google Drive", icon: <Cloud className="h-4 w-4" /> },
+    { name: "Zoom", icon: <Video className="h-4 w-4" /> },
+    { name: "Trello", icon: <Trello className="h-4 w-4" /> },
+    { name: "GitHub", icon: <Github className="h-4 w-4" /> },
+  ]);
   
   // Get user settings
   const { data: userSettings, isLoading, refetch } = useUserSettings(userId);
   const updateUserSettings = useUpdateUserSettings();
+  const { uploadImage, loading: isImageUploading } = useUploadProfileImage();
+  const { signOut, loading: isSigningOut } = useSignOut();
+  const { resetPassword, loading: isResetLoading } = useResetPassword();
   
   // Update local state when settings are loaded
   useEffect(() => {
@@ -115,6 +129,17 @@ const Settings = () => {
       });
     }
   }, [userSettings]);
+
+  // Set document theme based on preferences
+  useEffect(() => {
+    const root = window.document.documentElement;
+    
+    if (preferences.theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [preferences.theme]);
 
   const handleSaveProfile = async () => {
     if (!userId) {
@@ -178,20 +203,13 @@ const Settings = () => {
     
     setIsUploadingAvatar(true);
     try {
-      // In a real app, you would upload the file to storage
-      // For this demo, we'll just simulate it
+      // Upload the profile image
+      const imageUrl = await uploadImage(file, userId);
       
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (imageUrl) {
+        setProfile({...profile, avatar: imageUrl});
+      }
       
-      // Generate a fake URL for the avatar
-      const fakeAvatarUrl = URL.createObjectURL(file);
-      setProfile({...profile, avatar: fakeAvatarUrl});
-      
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been updated successfully.",
-      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -224,6 +242,14 @@ const Settings = () => {
           ...preferences,
           emailNotifications: !preferences.emailNotifications,
         });
+      } else if (setting === "2fa") {
+        // Toggle 2FA (simulation)
+        setIs2FAEnabled(!is2FAEnabled);
+        toast({
+          title: `2FA ${!is2FAEnabled ? 'Enabled' : 'Disabled'}`,
+          description: `Two-factor authentication has been ${!is2FAEnabled ? 'enabled' : 'disabled'} for your account.`,
+        });
+        return;
       }
       
       // Update in database
@@ -377,11 +403,7 @@ const Settings = () => {
         description: `Successfully connected to ${appName}`,
       });
       
-      // Update the local state
-      const updatedApps = connectedApps.map(app => 
-        app.name === appName ? { ...app, connected: true } : app
-      );
-      // setConnectedApps(updatedApps);
+      // Update the local state (in a real app we would save this to the database)
       
     } catch (error: any) {
       toast({
@@ -406,11 +428,7 @@ const Settings = () => {
         description: `Successfully disconnected from ${appName}`,
       });
       
-      // Update the local state
-      const updatedApps = connectedApps.map(app => 
-        app.name === appName ? { ...app, connected: false } : app
-      );
-      // setConnectedApps(updatedApps);
+      // Update the local state (in a real app we would save this to the database)
       
     } catch (error: any) {
       toast({
@@ -422,6 +440,170 @@ const Settings = () => {
       setIsSaving(false);
     }
   };
+
+  const handleResetPassword = async () => {
+    if (!profile.email) {
+      toast({
+        title: "Email Required",
+        description: "Your email address is needed to reset your password",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await resetPassword(profile.email);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a link to reset your password.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handle2FASetup = () => {
+    if (is2FAEnabled) {
+      // If already enabled, disable it
+      setIs2FAEnabled(false);
+      toast({
+        title: "2FA Disabled",
+        description: "Two-factor authentication has been disabled for your account.",
+      });
+    } else {
+      // Show the 2FA setup flow (simplified for demo)
+      setIs2FAEnabled(true);
+      toast({
+        title: "2FA Enabled",
+        description: "Two-factor authentication has been enabled for your account.",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const ConnectionModal = ({ app }: { app: { name: string, icon: React.ReactNode } }) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Connect to {app.name}</h3>
+          <button onClick={() => setShowConnectModal(false)}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        
+        <div className="mt-4 space-y-4">
+          <div className="rounded-md bg-primary/5 p-4">
+            <div className="flex items-center gap-3">
+              {app.icon}
+              <div>
+                <p className="font-medium">{app.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Connect your account to enable {app.name} integration
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-4 text-sm">
+            <p className="mb-2">By connecting to {app.name}, you agree to:</p>
+            <ul className="ml-5 list-disc space-y-1">
+              <li>Share access to your profile information</li>
+              <li>Allow read/write access to your data</li>
+              <li>Enable seamless integration between platforms</li>
+            </ul>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <button 
+              onClick={() => setShowConnectModal(false)}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => handleConnectApp(app.name)}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Connect"
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const FAQSection = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <HelpCircle className="h-4 w-4" />
+        <h3 className="font-medium">Help & Support</h3>
+      </div>
+      
+      <div className="space-y-6">
+        <div className="space-y-4">
+          {[
+            {
+              question: "How do I change my password?",
+              answer: "Go to Settings > Security and click on the 'Change Password' button. You'll receive an email with a link to reset your password."
+            },
+            {
+              question: "How do I enable two-factor authentication?",
+              answer: "Go to Settings > Security and toggle on the Two-Factor Authentication option. You'll be guided through the setup process to enhance your account security."
+            },
+            {
+              question: "Can I connect my account to external services?",
+              answer: "Yes, go to Settings > Integrations to connect your account with services like Google Calendar, Microsoft Office, and Slack for enhanced functionality."
+            },
+            {
+              question: "How do I change the app's appearance?",
+              answer: "Go to Settings > Appearance and choose between Light and Dark modes. You can also customize your dashboard layout and select your preferred language."
+            },
+            {
+              question: "How do I update my profile information?",
+              answer: "Go to Settings > Profile to update your name, email, phone number, and profile picture. Click 'Save Changes' when you're done."
+            }
+          ].map((faq, index) => (
+            <div key={index} className="p-4 rounded-lg bg-primary/5">
+              <h4 className="text-sm font-medium mb-2">{faq.question}</h4>
+              <p className="text-sm text-muted-foreground">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+        
+        <div className="p-4 rounded-lg border border-input">
+          <h4 className="text-sm font-medium mb-2">Need more help?</h4>
+          <p className="text-sm text-muted-foreground mb-4">
+            If you couldn't find the answer to your question, please contact our support team.
+          </p>
+          <div className="flex items-center gap-2">
+            <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+              <Mail className="mr-2 h-4 w-4" />
+              Contact Support
+            </button>
+            <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+              <FileText className="mr-2 h-4 w-4" />
+              View Documentation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DashboardLayout>
@@ -435,54 +617,84 @@ const Settings = () => {
           <div className="dashboard-card md:col-span-2">
             <div className="space-y-1 mb-6">
               <button 
-                onClick={() => setActiveSettingsTab("profile")}
+                onClick={() => {
+                  setActiveSettingsTab("profile");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "profile" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "profile" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <User className="h-4 w-4" />
                 <span>Profile</span>
               </button>
               <button 
-                onClick={() => setActiveSettingsTab("appearance")}
+                onClick={() => {
+                  setActiveSettingsTab("appearance");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "appearance" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "appearance" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <Palette className="h-4 w-4" />
                 <span>Appearance</span>
               </button>
               <button 
-                onClick={() => setActiveSettingsTab("notifications")}
+                onClick={() => {
+                  setActiveSettingsTab("notifications");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "notifications" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "notifications" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <Bell className="h-4 w-4" />
                 <span>Notifications</span>
               </button>
               <button 
-                onClick={() => setActiveSettingsTab("security")}
+                onClick={() => {
+                  setActiveSettingsTab("security");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "security" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "security" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <Lock className="h-4 w-4" />
                 <span>Security</span>
               </button>
               <button 
-                onClick={() => setActiveSettingsTab("integrations")}
+                onClick={() => {
+                  setActiveSettingsTab("integrations");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "integrations" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "integrations" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <Globe className="h-4 w-4" />
                 <span>Integrations</span>
               </button>
               <button 
-                onClick={() => setActiveSettingsTab("privacy")}
+                onClick={() => {
+                  setActiveSettingsTab("privacy");
+                  setShowFaq(false);
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "privacy" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  activeSettingsTab === "privacy" && !showFaq 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-accent"
                 }`}
               >
                 <Shield className="h-4 w-4" />
@@ -492,12 +704,25 @@ const Settings = () => {
             
             <div className="pt-4 border-t">
               <div className="flex flex-col space-y-2">
-                <button className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-muted-foreground">
+                <button 
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-muted-foreground ${
+                    showFaq ? "bg-primary text-primary-foreground hover:bg-primary" : ""
+                  }`}
+                  onClick={() => setShowFaq(!showFaq)}
+                >
                   <HelpCircle className="h-4 w-4" />
                   <span>Help & Support</span>
                 </button>
-                <button className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-red-500">
-                  <LogOut className="h-4 w-4" />
+                <button 
+                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-red-500"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                >
+                  {isSigningOut ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4" />
+                  )}
                   <span>Sign Out</span>
                 </button>
               </div>
@@ -505,7 +730,9 @@ const Settings = () => {
           </div>
 
           <div className="dashboard-card md:col-span-5">
-            {activeSettingsTab === "profile" && (
+            {showFaq ? (
+              <FAQSection />
+            ) : activeSettingsTab === "profile" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-6">
                   <User className="h-4 w-4" />
@@ -514,21 +741,17 @@ const Settings = () => {
                 
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    {profile.avatar ? (
-                      <img 
-                        src={profile.avatar} 
-                        alt="Profile" 
-                        className="h-20 w-20 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-lg font-medium text-primary">
+                    <Avatar className="h-20 w-20">
+                      {profile.avatar ? (
+                        <AvatarImage src={profile.avatar} alt={profile.name} />
+                      ) : (
+                        <AvatarFallback className="text-lg">
                           {profile.name
                             ? profile.name.split(" ").map(n => n[0]).join("").toUpperCase()
                             : "U"}
-                        </span>
-                      </div>
-                    )}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     <label 
                       htmlFor="avatar-upload" 
                       className="absolute -bottom-1 -right-1 p-1 rounded-full bg-primary text-primary-foreground cursor-pointer"
@@ -609,7 +832,7 @@ const Settings = () => {
               </div>
             )}
             
-            {activeSettingsTab === "appearance" && (
+            {!showFaq && activeSettingsTab === "appearance" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-6">
                   <Palette className="h-4 w-4" />
@@ -628,7 +851,7 @@ const Settings = () => {
                         <div className="flex items-center gap-3">
                           <Palette className="h-4 w-4" />
                           <div>
-                            <p className="text-sm font-medium">Appearance</p>
+                            <p className="text-sm font-medium">Theme</p>
                             <p className="text-sm text-muted-foreground">
                               Select your preferred theme
                             </p>
@@ -658,415 +881,4 @@ const Settings = () => {
                         >
                           {preferences.theme === "dark" && <Check className="h-4 w-4" />}
                           <Moon className="h-4 w-4" />
-                          <span>Dark</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Language */}
-                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Language</p>
-                          <p className="text-sm text-muted-foreground">
-                            Select your preferred language
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <select
-                          value={preferences.language}
-                          onChange={(e) => handleUpdateLanguage(e.target.value)}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {availableLanguages.map((language) => (
-                            <option key={language.code} value={language.code}>
-                              {language.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    {/* Dashboard Layout */}
-                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <BarChart4 className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Dashboard Layout</p>
-                          <p className="text-sm text-muted-foreground">
-                            Customize your dashboard view
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <select
-                          value={preferences.dashboardLayout}
-                          onChange={(e) => handleUpdateDashboardLayout(e.target.value)}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {dashboardLayouts.map((layout) => (
-                            <option key={layout.value} value={layout.value}>
-                              {layout.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {activeSettingsTab === "notifications" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Bell className="h-4 w-4" />
-                  <h3 className="font-medium">Notification Settings</h3>
-                </div>
-                
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Email Notifications */}
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <Bell className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Email Notifications</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive updates and alerts via email
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleToggleSetting("emailNotifications")}
-                        disabled={isSaving}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.emailNotifications ? "bg-primary" : "bg-input"}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                            preferences.emailNotifications ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    
-                    {/* Push Notifications */}
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <Smartphone className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Push Notifications</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive push notifications on your devices
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
-                        />
-                      </button>
-                    </div>
-                    
-                    {/* Marketing Emails */}
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Marketing Emails</p>
-                          <p className="text-sm text-muted-foreground">
-                            Receive marketing and promotional emails
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {activeSettingsTab === "security" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Lock className="h-4 w-4" />
-                  <h3 className="font-medium">Security Settings</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* Change Password */}
-                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Lock className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Change Password</p>
-                          <p className="text-sm text-muted-foreground">
-                            Update your account password
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                        onClick={() => {
-                          toast({
-                            title: "Password Reset Email Sent",
-                            description: "Check your email for a link to reset your password.",
-                          });
-                        }}
-                      >
-                        Change
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Auto Logout */}
-                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Auto Logout</p>
-                        <p className="text-sm text-muted-foreground">
-                          Set the time of inactivity before automatic logout
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <select
-                        value={preferences.autoLogout}
-                        onChange={(e) => handleUpdateAutoLogout(Number(e.target.value))}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {autoLogoutOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  {/* Two Factor Authentication */}
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Two-Factor Authentication</p>
-                        <p className="text-sm text-muted-foreground">
-                          Add an extra layer of security to your account
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {activeSettingsTab === "integrations" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Globe className="h-4 w-4" />
-                  <h3 className="font-medium">Integrations</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  <p className="text-sm text-muted-foreground">
-                    Connect your account to external services for enhanced functionality.
-                  </p>
-                  
-                  {/* Connected Apps */}
-                  <div className="space-y-4">
-                    {connectedApps.map((app) => (
-                      <div key={app.name} className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-xs font-medium">{app.name.charAt(0)}</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{app.name}</p>
-                            {app.connected ? (
-                              <div className="flex items-center mt-1">
-                                <div className="h-2 w-2 rounded-full bg-green-500 mr-2"></div>
-                                <p className="text-xs text-muted-foreground">Connected</p>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">Not connected</p>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-                            app.connected 
-                              ? "border border-input bg-background hover:bg-accent hover:text-accent-foreground" 
-                              : "bg-primary text-primary-foreground hover:bg-primary/90"
-                          } h-9 px-4 py-2`}
-                          onClick={() => app.connected 
-                            ? handleDisconnectApp(app.name) 
-                            : handleConnectApp(app.name)
-                          }
-                          disabled={isSaving}
-                        >
-                          {isSaving ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : app.connected ? (
-                            "Disconnect"
-                          ) : (
-                            "Connect"
-                          )}
-                        </button>
-                      </div>
-                    ))}
-                    
-                    <button 
-                      className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-input hover:bg-accent transition-colors"
-                      onClick={() => setShowConnectModal(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span className="text-sm">Connect New App</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {activeSettingsTab === "privacy" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Shield className="h-4 w-4" />
-                  <h3 className="font-medium">Privacy Settings</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* Privacy Controls */}
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Activity Tracking</p>
-                        <p className="text-sm text-muted-foreground">
-                          Allow us to collect anonymous usage data
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full bg-primary`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-6`}
-                      />
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Public Profile</p>
-                        <p className="text-sm text-muted-foreground">
-                          Make your profile visible to other users
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
-                      />
-                    </button>
-                  </div>
-                  
-                  <button 
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-destructive bg-background text-destructive hover:bg-destructive/10 h-9 px-4 py-2"
-                    onClick={() => {
-                      toast({
-                        title: "Data Export Requested",
-                        description: "We'll email you a link to download your data soon.",
-                      });
-                    }}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Export My Data
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* App Connection Modal */}
-      {showConnectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
-          <div className="w-full max-w-md p-6 rounded-lg border border-input bg-background shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-medium">Connect New App</h4>
-              <button onClick={() => setShowConnectModal(false)}>
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select App</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <option value="google-drive">Google Drive</option>
-                  <option value="dropbox">Dropbox</option>
-                  <option value="github">GitHub</option>
-                  <option value="trello">Trello</option>
-                </select>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                You will be redirected to the app to authorize this connection.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button 
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                  onClick={() => setShowConnectModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-                  onClick={() => handleConnectApp("Google Drive")}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    "Connect"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </DashboardLayout>
-  );
-};
-
-export default Settings;
+                          <span>Dark
