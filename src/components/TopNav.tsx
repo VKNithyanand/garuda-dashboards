@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, Search, X } from "lucide-react";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Notifications } from "@/components/Notifications";
 
 interface TopNavProps {
@@ -10,7 +10,7 @@ interface TopNavProps {
 }
 
 export const TopNav = ({ setSidebarOpen }: TopNavProps) => {
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();

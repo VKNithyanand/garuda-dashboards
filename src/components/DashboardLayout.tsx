@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
 
@@ -8,11 +8,13 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="pl-64">
-        <TopNav />
+        <TopNav setSidebarOpen={setSidebarOpen} />
         <main className="container py-6 animate-fade-in">
           {children}
         </main>

@@ -26,6 +26,8 @@ import {
   LogOut,
   Upload,
   Camera,
+  Download,
+  Mail
 } from "lucide-react";
 
 const Settings = () => {
@@ -103,7 +105,9 @@ const Settings = () => {
         emailNotifications: userSettings.email_notifications,
         theme: userSettings.theme || "light",
         language: userSettings.language || "en",
-        dashboardLayout: userSettings.dashboard_layout?.layout || "default",
+        dashboardLayout: userSettings.dashboard_layout && typeof userSettings.dashboard_layout === 'object' 
+          ? (userSettings.dashboard_layout as any).layout || "default"
+          : "default",
         autoLogout: userSettings.auto_logout || 60,
       });
     }
