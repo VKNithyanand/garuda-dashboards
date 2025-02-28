@@ -62,6 +62,45 @@ export const useCustomers = () => {
   });
 };
 
+export const useAddCustomer = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (customerData: { name: string; email: string }) => {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([customerData])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+  });
+};
+
+export const useDeleteCustomer = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (customerId: string) => {
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', customerId);
+      
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+  });
+};
+
 // Insights
 export const useInsights = () => {
   return useQuery({
@@ -117,11 +156,35 @@ export const useUpdateUserSettings = () => {
   });
 };
 
-// Real-time data 
+// Real-time data subscriptions
 export const subscribeToSalesUpdates = (callback: (payload: any) => void) => {
   const channel = supabase
     .channel('public:sales')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales' }, callback)
+    .subscribe();
+    
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const subscribeToCustomerUpdates = (callback: (payload: any) => void) => {
+  const channel = supabase
+    .channel('public:customers')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'customers' }, callback)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'customers' }, callback)
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'customers' }, callback)
+    .subscribe();
+    
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const subscribeToInsightUpdates = (callback: (payload: any) => void) => {
+  const channel = supabase
+    .channel('public:insights')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'insights' }, callback)
     .subscribe();
     
   return () => {
