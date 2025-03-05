@@ -1,5 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import React from "react";
+import { useQuery, QueryClient } from "@tanstack/react-query";
 
 // Types for dashboard health monitoring
 export interface DashboardError {
@@ -100,7 +102,7 @@ export function trackApiResponseTime(endpoint: string, timeMs: number): void {
 
 // Update component data state
 export function updateDataState(key: string, data: any[]): void {
-  dashboardState[key] = data;
+  dashboardState[key as keyof DashboardState] = data;
 }
 
 // Update component UI state
@@ -234,6 +236,9 @@ export function withErrorBoundary<T>(Component: React.ComponentType<T>, componen
     }
   };
 }
+
+// Need to create a dummy queryClient for the hook to work
+const queryClient = new QueryClient();
 
 // Enhanced data fetching with retry logic and monitoring
 export function useMonitoredQuery(queryKey: string[], queryFn: () => Promise<any>, options = {}) {
