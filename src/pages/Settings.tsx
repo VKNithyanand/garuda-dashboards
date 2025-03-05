@@ -1,4 +1,4 @@
-<lov-code>
+
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useUpdateUserSettings, useUserSettings } from "@/lib/supabase-client";
@@ -881,4 +881,688 @@ const Settings = () => {
                         >
                           {preferences.theme === "dark" && <Check className="h-4 w-4" />}
                           <Moon className="h-4 w-4" />
-                          <span>Dark
+                          <span>Dark</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Language */}
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Globe className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Language</p>
+                            <p className="text-sm text-muted-foreground">
+                              Choose your preferred language
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {availableLanguages.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => handleUpdateLanguage(lang.code)}
+                            className={`flex items-center justify-center gap-2 py-2 rounded-md ${
+                              preferences.language === lang.code
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card hover:bg-accent"
+                            }`}
+                          >
+                            {preferences.language === lang.code && <Check className="h-4 w-4" />}
+                            <span>{lang.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Dashboard Layout */}
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <SettingsIcon className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Dashboard Layout</p>
+                            <p className="text-sm text-muted-foreground">
+                              Customize how your dashboard is displayed
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 mt-2">
+                        {dashboardLayouts.map((layout) => (
+                          <button
+                            key={layout.value}
+                            onClick={() => handleUpdateDashboardLayout(layout.value)}
+                            className={`flex items-center justify-between px-3 py-2 rounded-md ${
+                              preferences.dashboardLayout === layout.value
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card hover:bg-accent"
+                            }`}
+                          >
+                            <span>{layout.name}</span>
+                            {preferences.dashboardLayout === layout.value && <Check className="h-4 w-4" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Auto-Logout */}
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Auto-Logout</p>
+                            <p className="text-sm text-muted-foreground">
+                              Set the time before you're automatically logged out
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 mt-2">
+                        {autoLogoutOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleUpdateAutoLogout(option.value)}
+                            className={`flex items-center justify-between px-3 py-2 rounded-md ${
+                              preferences.autoLogout === option.value
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-card hover:bg-accent"
+                            }`}
+                          >
+                            <span>{option.name}</span>
+                            {preferences.autoLogout === option.value && <Check className="h-4 w-4" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Mobile Preferences (if on mobile) */}
+                    {isMobile && (
+                      <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Smartphone className="h-4 w-4" />
+                            <div>
+                              <p className="text-sm font-medium">Mobile Settings</p>
+                              <p className="text-sm text-muted-foreground">
+                                Additional settings for mobile devices
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Additional mobile settings go here */}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!showFaq && activeSettingsTab === "notifications" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Bell className="h-4 w-4" />
+                  <h3 className="font-medium">Notification Settings</h3>
+                </div>
+                
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Mail className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Email Notifications</p>
+                            <p className="text-sm text-muted-foreground">
+                              Receive important updates via email
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleToggleSetting("emailNotifications")}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                            preferences.emailNotifications 
+                              ? "bg-primary" 
+                              : "bg-input"
+                          }`}
+                          role="switch"
+                          aria-checked={preferences.emailNotifications}
+                          disabled={isSaving}
+                        >
+                          <span
+                            className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                              preferences.emailNotifications ? "translate-x-5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Additional notification settings */}
+                    <div className="space-y-2 p-4 rounded-lg bg-muted/50">
+                      <h4 className="text-sm font-medium mb-4">Notification Types</h4>
+                      
+                      {/* List of notification types with toggles */}
+                      <div className="space-y-4">
+                        {[
+                          { id: "security", name: "Security Alerts", defaultEnabled: true, icon: <Shield className="h-4 w-4" /> },
+                          { id: "updates", name: "Product Updates", defaultEnabled: true, icon: <Info className="h-4 w-4" /> },
+                          { id: "marketing", name: "Marketing Communications", defaultEnabled: false, icon: <Mail className="h-4 w-4" /> },
+                          { id: "team", name: "Team Activity", defaultEnabled: true, icon: <User className="h-4 w-4" /> },
+                        ].map((notification) => (
+                          <div key={notification.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {notification.icon}
+                              <span className="text-sm">{notification.name}</span>
+                            </div>
+                            <button
+                              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                                notification.defaultEnabled ? "bg-primary" : "bg-input"
+                              }`}
+                              role="switch"
+                              aria-checked={notification.defaultEnabled}
+                            >
+                              <span
+                                className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                                  notification.defaultEnabled ? "translate-x-5" : "translate-x-0.5"
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg border border-input">
+                      <h4 className="text-sm font-medium mb-2">Communication Preferences</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Customize how and when you'd like to be contacted.
+                      </p>
+                      <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                        Manage Communication Preferences
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!showFaq && activeSettingsTab === "security" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Lock className="h-4 w-4" />
+                  <h3 className="font-medium">Security Settings</h3>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Password Reset */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <KeyRound className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Password</p>
+                          <p className="text-sm text-muted-foreground">
+                            Update your password for better security
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <button 
+                        onClick={handleResetPassword}
+                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+                        disabled={isResetLoading}
+                      >
+                        {isResetLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Change Password
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Two-Factor Authentication */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <QrCode className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Two-Factor Authentication (2FA)</p>
+                          <p className="text-sm text-muted-foreground">
+                            Add an extra layer of security to your account
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handle2FASetup}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                          is2FAEnabled 
+                            ? "bg-primary" 
+                            : "bg-input"
+                        }`}
+                        role="switch"
+                        aria-checked={is2FAEnabled}
+                        disabled={isSaving}
+                      >
+                        <span
+                          className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                            is2FAEnabled ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    
+                    {is2FAEnabled && (
+                      <div className="mt-4 p-4 rounded-md bg-muted space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-white p-2 rounded-md">
+                            {/* Placeholder for QR code - in a real app, this would be a generated QR code */}
+                            <div className="w-24 h-24 grid grid-cols-4 grid-rows-4 gap-1">
+                              {Array.from({ length: 16 }).map((_, i) => (
+                                <div 
+                                  key={i} 
+                                  className={`${Math.random() > 0.5 ? 'bg-black' : 'bg-transparent'}`}
+                                ></div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Scan this QR code</p>
+                            <p className="text-xs text-muted-foreground">
+                              Use an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator to scan this QR code.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Or enter this code manually:</p>
+                          <div className="flex items-center gap-2">
+                            <code className="p-2 bg-muted-foreground/10 rounded text-sm font-mono">
+                              ABCD EFGH IJKL MNOP
+                            </code>
+                            <button className="rounded-md p-1 hover:bg-muted-foreground/20">
+                              <Copy className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t space-y-2">
+                          <p className="text-sm font-medium">Verify your setup:</p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              placeholder="Enter the 6-digit code"
+                            />
+                            <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Verify
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Session Management */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Active Sessions</p>
+                          <p className="text-sm text-muted-foreground">
+                            Manage devices where you're currently logged in
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2 space-y-3">
+                      <div className="p-3 rounded-md bg-muted/50 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <Smartphone className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Current Device</p>
+                            <p className="text-xs text-muted-foreground">Last active: Just now</p>
+                          </div>
+                        </div>
+                        <div className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded">
+                          Current
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 rounded-md bg-muted/50 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <Laptop className="h-4 w-4" />
+                          <div>
+                            <p className="text-sm font-medium">Macbook Pro</p>
+                            <p className="text-xs text-muted-foreground">Last active: 2 days ago</p>
+                          </div>
+                        </div>
+                        <button className="text-destructive hover:text-destructive/80 text-xs font-medium px-2 py-1 rounded">
+                          <LogOut className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <button className="mt-2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 w-full">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Log Out of All Devices
+                    </button>
+                  </div>
+                  
+                  {/* Login History */}
+                  <div className="space-y-2 p-4 rounded-lg border border-input">
+                    <h4 className="text-sm font-medium">Login History</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Recent login attempts to your account.
+                    </p>
+                    
+                    <div className="space-y-2">
+                      {[
+                        { date: "Today, 10:30 AM", location: "San Francisco, CA", success: true },
+                        { date: "Yesterday, 8:45 PM", location: "San Francisco, CA", success: true },
+                        { date: "Jul 12, 2023, 3:20 PM", location: "New York, NY", success: false },
+                      ].map((login, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            {login.success ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <X className="h-4 w-4 text-red-500" />
+                            )}
+                            <span>{login.date}</span>
+                          </div>
+                          <span className="text-muted-foreground">{login.location}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button className="mt-2 text-sm text-primary hover:underline">
+                      View full history
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {!showFaq && activeSettingsTab === "integrations" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Globe className="h-4 w-4" />
+                  <h3 className="font-medium">Integrations</h3>
+                </div>
+                
+                {/* Connected Apps */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium">Connected Applications</h4>
+                  
+                  <div className="grid gap-4">
+                    {connectedApps.map((app) => (
+                      <div key={app.name} className="p-4 rounded-lg border border-input flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-md bg-primary/10">
+                            {app.icon}
+                          </div>
+                          <div>
+                            <p className="font-medium">{app.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {app.connected ? "Connected" : "Not connected"}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {app.connected ? (
+                          <button 
+                            onClick={() => handleDisconnectApp(app.name)}
+                            className="text-sm font-medium text-destructive hover:text-destructive/80"
+                            disabled={isSaving}
+                          >
+                            {isSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Disconnect"
+                            )}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              // Set the app to connect and show modal
+                              setShowConnectModal(true);
+                            }}
+                            className="text-sm font-medium text-primary hover:text-primary/80"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Available Integrations */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">Available Integrations</h4>
+                    <button className="inline-flex items-center text-xs font-medium text-primary">
+                      <Plus className="mr-1 h-3 w-3" />
+                      Browse Integration Marketplace
+                    </button>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {availableIntegrations.map((app) => (
+                      <div key={app.name} className="p-4 rounded-lg border border-input flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-md bg-primary/10">
+                            {app.icon}
+                          </div>
+                          <p className="font-medium">{app.name}</p>
+                        </div>
+                        
+                        <button 
+                          onClick={() => {
+                            // Show the connection modal
+                            setShowConnectModal(true);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 py-2"
+                        >
+                          <Plus className="mr-1 h-3 w-3" />
+                          Connect
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* API Access */}
+                <div className="p-4 rounded-lg border border-input space-y-4">
+                  <h4 className="text-sm font-medium">API Access</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your API tokens for custom integrations.
+                  </p>
+                  <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Manage API Keys
+                  </button>
+                </div>
+                
+                {/* Connection Modal */}
+                {showConnectModal && <ConnectionModal app={availableIntegrations[0]} />}
+              </div>
+            )}
+            
+            {!showFaq && activeSettingsTab === "privacy" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Shield className="h-4 w-4" />
+                  <h3 className="font-medium">Privacy Settings</h3>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Data Collection */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Info className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Data Collection</p>
+                          <p className="text-sm text-muted-foreground">
+                            Controls how we collect data about your usage
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background bg-primary"
+                        role="switch"
+                        aria-checked="true"
+                      >
+                        <span
+                          className="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform translate-x-5"
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Cookie Preferences */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Cookie className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Cookie Preferences</p>
+                          <p className="text-sm text-muted-foreground">
+                            Manage cookies and tracking technologies
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      {[
+                        { id: "essential", name: "Essential Cookies", description: "Required for basic functionality", required: true },
+                        { id: "functional", name: "Functional Cookies", description: "Enhance user experience", required: false },
+                        { id: "analytics", name: "Analytics Cookies", description: "Help us improve our services", required: false },
+                        { id: "marketing", name: "Marketing Cookies", description: "Used for targeted advertising", required: false },
+                      ].map((cookie) => (
+                        <div key={cookie.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
+                          <input
+                            type="checkbox"
+                            id={cookie.id}
+                            checked={cookie.required}
+                            disabled={cookie.required}
+                            className="mt-1"
+                          />
+                          <div>
+                            <label htmlFor={cookie.id} className="text-sm font-medium block">
+                              {cookie.name} {cookie.required && <span className="text-xs text-muted-foreground">(Required)</span>}
+                            </label>
+                            <p className="text-xs text-muted-foreground">{cookie.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button className="mt-2 w-full inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                      Save Cookie Preferences
+                    </button>
+                  </div>
+                  
+                  {/* Communication Preferences */}
+                  <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Communication Preferences</p>
+                          <p className="text-sm text-muted-foreground">
+                            Control what types of emails you receive
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      {[
+                        { id: "product", name: "Product Updates", enabled: true },
+                        { id: "security", name: "Security Alerts", enabled: true },
+                        { id: "newsletter", name: "Newsletter", enabled: false },
+                        { id: "promotions", name: "Promotions and Offers", enabled: false },
+                      ].map((pref) => (
+                        <div key={pref.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                          <label htmlFor={pref.id} className="text-sm font-medium">
+                            {pref.name}
+                          </label>
+                          <button
+                            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                              pref.enabled ? "bg-primary" : "bg-input"
+                            }`}
+                            role="switch"
+                            aria-checked={pref.enabled}
+                          >
+                            <span
+                              className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                                pref.enabled ? "translate-x-5" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Data Export & Deletion */}
+                  <div className="p-4 rounded-lg border border-input space-y-4">
+                    <h4 className="text-sm font-medium">Your Data</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Download your data or request account deletion.
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export Data
+                      </button>
+                      <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-destructive bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground h-9 px-4 py-2">
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Privacy Policy */}
+                  <div className="p-4 rounded-lg border border-input">
+                    <h4 className="text-sm font-medium mb-2">Privacy Policy</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Our privacy policy was last updated on July 24, 2023.
+                    </p>
+                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                      <FileText className="mr-2 h-4 w-4" />
+                      View Privacy Policy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Settings;
