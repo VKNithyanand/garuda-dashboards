@@ -1,100 +1,91 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase-client';
+import { supabase } from '@/integrations/supabase/client';
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-});
-
-interface ResetPasswordFormValues {
-  email: string;
-}
-
-const ResetPassword: React.FC = () => {
-  const [isSuccess, setIsSuccess] = useState(false);
+export default function ResetPassword() {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(formSchema),
-  });
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const onSubmit = async (data: ResetPasswordFormValues) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
 
-    if (error) {
+      if (error) {
+        throw new Error(error.message);
+      }
+
       toast({
-        title: "Error",
-        description: "Failed to send reset password email.",
-        variant: "destructive",
+        title: 'Reset Password Email Sent',
+        description: 'Check your email for a password reset link.',
       });
-    } else {
-      setIsSuccess(true);
+      navigate('/auth');
+    } catch (error: any) {
       toast({
-        title: "Success",
-        description: "Reset password email sent successfully!",
+        title: 'Error',
+        description: error.message || 'Failed to send reset password email.',
+        variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="grid h-screen place-items-center">
-      <Card className="w-[450px] p-4">
-        <CardHeader>
-          <CardTitle>Reset Password</CardTitle>
-          <CardDescription>
-            Enter your email address and we will send you a link to reset your password.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {isSuccess ? (
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <CheckCircle className="h-10 w-10 text-green-500" />
-              <p className="text-center text-sm text-muted-foreground">
-                We have sent a password reset link to your email address.
-                Please check your inbox and follow the instructions to reset your password.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+    <div className="container relative h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:px-0">
+      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex"></div>
+      <div className="lg:p-8">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          <Card>
+            <CardHeader className="space-y-5">
+              <CardTitle>Reset Password</CardTitle>
+              <CardDescription>Enter your email to reset your password.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
-                  type="email"
                   placeholder="Enter your email"
-                  {...register("email")}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email.message}</p>
-                )}
               </div>
-              <Button type="submit">Send Reset Link</Button>
-            </form>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Link to="/auth" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-            Back to Login
-          </Link>
-        </CardFooter>
-      </Card>
+            </CardContent>
+            <CardFooter>
+              <Button disabled={loading} onClick={handleResetPassword} className="w-full">
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Reset Password
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
     </div>
   );
-};
-
-export default ResetPassword;
+}
