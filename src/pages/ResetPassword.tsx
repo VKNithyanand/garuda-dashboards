@@ -1,100 +1,98 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase-client';
 
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { useResetPassword } from "@/lib/supabase-auth";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address." }),
+});
 
-const ResetPassword = () => {
-  const [email, setEmail] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const { resetPassword, loading } = useResetPassword();
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await resetPassword(email);
-    setIsSubmitted(true);
+interface ResetPasswordFormValues {
+  email: string;
+}
+
+const ResetPassword: React.FC = () => {
+  const [isSuccess, setIsSuccess] = useState(false);
+  const { toast } = useToast();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(formSchema),
+  });
+
+  const onSubmit = async (data: ResetPasswordFormValues) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send reset password email.",
+        variant: "destructive",
+      });
+    } else {
+      setIsSuccess(true);
+      toast({
+        title: "Success",
+        description: "Reset password email sent successfully!",
+      });
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-8 rounded-lg border border-border p-6 shadow-sm">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Reset your password</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Enter your email address and we'll send you a link to reset your password
-          </p>
-        </div>
-
-        {isSubmitted ? (
-          <div className="space-y-4">
-            <div className="rounded-md bg-green-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <CheckCircle2 className="h-5 w-5 text-green-400" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    Password reset email sent
-                  </h3>
-                  <div className="mt-2 text-sm text-green-700">
-                    <p>Please check your email for a link to reset your password.</p>
-                  </div>
-                </div>
-              </div>
+    <div className="grid h-screen place-items-center">
+      <Card className="w-[450px] p-4">
+        <CardHeader>
+          <CardTitle>Reset Password</CardTitle>
+          <CardDescription>
+            Enter your email address and we will send you a link to reset your password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {isSuccess ? (
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <CheckCircle className="h-10 w-10 text-green-500" />
+              <p className="text-center text-sm text-muted-foreground">
+                We have sent a password reset link to your email address.
+                Please check your inbox and follow the instructions to reset your password.
+              </p>
             </div>
-            <Link
-              to="/auth"
-              className="inline-flex items-center text-sm text-primary hover:underline"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to sign in
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <div className="relative">
-                <input
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
                   id="email"
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  required
-                  disabled={loading}
+                  placeholder="Enter your email"
+                  {...register("email")}
                 />
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
               </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                "Send reset link"
-              )}
-            </button>
-
-            <div className="text-center text-sm">
-              <Link
-                to="/auth"
-                className="inline-flex items-center text-primary hover:underline"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to sign in
-              </Link>
-            </div>
-          </form>
-        )}
-      </div>
+              <Button type="submit">Send Reset Link</Button>
+            </form>
+          )}
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Link to="/auth" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+            Back to Login
+          </Link>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
