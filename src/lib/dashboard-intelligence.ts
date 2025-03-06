@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import React from "react";
 import { useQuery, QueryClient } from "@tanstack/react-query";
@@ -130,6 +131,34 @@ export function trackReportActivity(action: 'generate' | 'download', format: str
   if (dashboardState.reportData.length > 20) {
     dashboardState.reportData.shift();
   }
+}
+
+// Parse CSV string into JSON
+export function parseCSV(csvString: string): any[] {
+  // Split by lines
+  const lines = csvString.split('\n');
+  
+  // Extract header row
+  const headers = lines[0].split(',').map(header => header.trim());
+  
+  // Process data rows
+  const result = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const values = line.split(',');
+    const entry: Record<string, any> = {};
+    
+    headers.forEach((header, idx) => {
+      entry[header] = values[idx] ? values[idx].trim() : '';
+    });
+    
+    result.push(entry);
+  }
+  
+  return result;
 }
 
 // Clear all errors
