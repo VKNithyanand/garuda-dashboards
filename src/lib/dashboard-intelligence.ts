@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import React from "react";
 import { useQuery, QueryClient } from "@tanstack/react-query";
@@ -24,6 +23,7 @@ export interface DashboardState {
   salesData?: any[];
   customersData?: any[];
   insightsData?: any[];
+  reportData?: any[];
   renderErrors: DashboardError[];
   apiErrors: DashboardError[];
   performanceMetrics: PerformanceMetrics;
@@ -108,6 +108,28 @@ export function updateDataState(key: string, data: any[]): void {
 // Update component UI state
 export function updateComponentState(component: string, state: any): void {
   dashboardState.componentState[component] = state;
+}
+
+// Track report generation and download
+export function trackReportActivity(action: 'generate' | 'download', format: string, success: boolean): void {
+  console.log(`Report ${action}: ${format} - ${success ? 'Success' : 'Failed'}`);
+  
+  // We could store more detailed analytics here
+  if (!dashboardState.reportData) {
+    dashboardState.reportData = [];
+  }
+  
+  (dashboardState.reportData as any[]).push({
+    action,
+    format,
+    success,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Keep only the latest 20 report activities
+  if (dashboardState.reportData.length > 20) {
+    dashboardState.reportData.shift();
+  }
 }
 
 // Clear all errors
