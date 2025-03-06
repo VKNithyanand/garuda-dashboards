@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChartComponent } from "@/components/charts/BarChartComponent";
@@ -22,16 +21,6 @@ import {
   Upload,
   Info,
 } from "lucide-react";
-
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
 // Create a file downloader utility function
 const downloadFile = async (url, filename) => {
@@ -165,7 +154,7 @@ const Reports = () => {
     setIsDownloading(true);
     
     try {
-      // Call the Supabase Edge Function with the format parameter
+      // Get the function URL in a type-safe way
       const functionUrl = `${supabase.functions.url('get-analytics')}?format=${report.format.toLowerCase()}`;
       
       // Download the file with the appropriate name
@@ -198,7 +187,7 @@ const Reports = () => {
     setIsDownloading(true);
     
     try {
-      // Call the Supabase Edge Function with the format parameter
+      // Get the function URL in a type-safe way
       const functionUrl = `${supabase.functions.url('get-analytics')}?format=${selectedFormat.toLowerCase()}`;
       
       if (customData) {

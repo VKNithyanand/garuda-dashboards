@@ -1,7 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import React from "react";
 import { useQuery, QueryClient } from "@tanstack/react-query";
-import { withErrorBoundary } from "@/components/ErrorBoundary";
 
 // Types for dashboard health monitoring
 export interface DashboardError {
@@ -103,7 +103,9 @@ export function trackApiResponseTime(endpoint: string, timeMs: number): void {
 
 // Update component data state
 export function updateDataState(key: string, data: any[]): void {
-  dashboardState[key as keyof DashboardState] = data;
+  if (key === 'salesData' || key === 'customersData' || key === 'insightsData' || key === 'reportData') {
+    dashboardState[key] = data;
+  }
 }
 
 // Update component UI state
@@ -235,9 +237,6 @@ export function initDashboardIntelligence(): void {
   }, 60000); // Check every minute
 }
 
-// Export the withErrorBoundary from the dedicated component file
-export { withErrorBoundary } from "@/components/ErrorBoundary";
-
 // Need to create a dummy queryClient for the hook to work
 const queryClient = new QueryClient();
 
@@ -275,3 +274,6 @@ export function useMonitoredQuery(queryKey: string[], queryFn: () => Promise<any
     ...options,
   });
 }
+
+// Import the ErrorBoundary component to avoid circular dependencies
+export { withErrorBoundary } from "@/components/ErrorBoundary";
