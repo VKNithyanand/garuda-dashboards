@@ -1,91 +1,102 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
-export default function ResetPassword() {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { useResetPassword } from "@/lib/supabase-auth";
+import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+const ResetPassword = () => {
+  const [email, setEmail] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const { resetPassword, loading } = useResetPassword();
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      toast({
-        title: 'Reset Password Email Sent',
-        description: 'Check your email for a password reset link.',
-      });
-      navigate('/auth');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send reset password email.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    await resetPassword(email);
+    setIsSubmitted(true);
   };
 
   return (
-    <div className="container relative h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:px-0">
-      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex"></div>
-      <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <Card>
-            <CardHeader className="space-y-5">
-              <CardTitle>Reset Password</CardTitle>
-              <CardDescription>Enter your email to reset your password.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md space-y-8 rounded-lg border border-border p-6 shadow-sm">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold tracking-tight">Reset your password</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Enter your email address and we'll send you a link to reset your password
+          </p>
+        </div>
+
+        {isSubmitted ? (
+          <div className="space-y-4">
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <CheckCircle2 className="h-5 w-5 text-green-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800">
+                    Password reset email sent
+                  </h3>
+                  <div className="mt-2 text-sm text-green-700">
+                    <p>Please check your email for a link to reset your password.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/auth"
+              className="inline-flex items-center text-sm text-primary hover:underline"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to sign in
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <div className="relative">
+                <input
                   id="email"
-                  placeholder="Enter your email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                  disabled={loading}
                 />
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button disabled={loading} onClick={handleResetPassword} className="w-full">
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Resetting...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Reset Password
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Send reset link"
+              )}
+            </button>
+
+            <div className="text-center text-sm">
+              <Link
+                to="/auth"
+                className="inline-flex items-center text-primary hover:underline"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to sign in
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default ResetPassword;
