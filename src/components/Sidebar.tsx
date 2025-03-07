@@ -6,7 +6,6 @@ import {
   User,
   HelpCircle,
   LogIn,
-  FileText,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -15,19 +14,23 @@ import { supabase } from "@/integrations/supabase/client";
 const Sidebar = () => {
   const { pathname } = useLocation();
 
+  // Add authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
+  // Check for authentication on component mount
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
       
+      // Set up auth state change listener
       const { data: authListener } = supabase.auth.onAuthStateChange(
         (event, session) => {
           setIsAuthenticated(!!session);
         }
       );
       
+      // Clean up listener on unmount
       return () => {
         authListener?.subscription.unsubscribe();
       };
@@ -128,26 +131,26 @@ const Sidebar = () => {
         </div>
       </div>
     
-      {!isAuthenticated ? (
-        <Link
-          to="/auth"
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground",
-            pathname === "/auth" && "bg-accent text-accent-foreground"
-          )}
-        >
-          <LogIn className="h-4 w-4" />
-          <span>Sign In</span>
-        </Link>
-      ) : (
-        <button
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
-        >
-          <LogIn className="h-4 w-4 rotate-180" />
-          <span>Sign Out</span>
-        </button>
-      )}
+    {!isAuthenticated ? (
+      <Link
+        to="/auth"
+        className={cn(
+          "flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground",
+          pathname === "/auth" && "bg-accent text-accent-foreground"
+        )}
+      >
+        <LogIn className="h-4 w-4" />
+        <span>Sign In</span>
+      </Link>
+    ) : (
+      <button
+        onClick={handleSignOut}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground"
+      >
+        <LogIn className="h-4 w-4 rotate-180" />
+        <span>Sign Out</span>
+      </button>
+    )}
     
     </div>
   );
