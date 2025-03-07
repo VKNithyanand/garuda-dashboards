@@ -11,9 +11,7 @@ import {
   Calendar,
   Share2,
   Loader2,
-  Search,
   X,
-  Calendar as CalendarIcon,
   ChevronDown,
   Check,
   File,
@@ -44,6 +42,11 @@ const downloadFile = async (url, filename) => {
     console.error('Download error:', error);
     return false;
   }
+};
+
+// Helper function to get edge function URL
+const getFunctionUrl = (functionName: string) => {
+  return `${supabase.functions.url(functionName)}`;
 };
 
 const Reports = () => {
@@ -155,7 +158,7 @@ const Reports = () => {
     
     try {
       // Get the function URL in a type-safe way
-      const functionUrl = `${supabase.functions.url('get-analytics')}?format=${report.format.toLowerCase()}`;
+      const functionUrl = `${getFunctionUrl('get-analytics')}?format=${report.format.toLowerCase()}`;
       
       // Download the file with the appropriate name
       const success = await downloadFile(
@@ -188,7 +191,7 @@ const Reports = () => {
     
     try {
       // Get the function URL in a type-safe way
-      const functionUrl = `${supabase.functions.url('get-analytics')}?format=${selectedFormat.toLowerCase()}`;
+      const functionUrl = `${getFunctionUrl('get-analytics')}?format=${selectedFormat.toLowerCase()}`;
       
       if (customData) {
         // If we have custom data, use POST method to send it
@@ -196,7 +199,7 @@ const Reports = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
           },
           body: JSON.stringify({ customData }),
         });
