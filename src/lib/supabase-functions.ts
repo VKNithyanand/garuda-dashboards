@@ -7,9 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
  * @returns The full URL to the Edge Function
  */
 export const getFunctionUrl = (functionName: string): string => {
-  // Get the base URL from the Supabase client
-  const baseUrl = `${process.env.SUPABASE_URL || "https://pjgxeexnyculxivmtccj.supabase.co"}/functions/v1`;
-  return `${baseUrl}/${functionName}`;
+  const url = supabase.functions.url(functionName);
+  if (typeof url !== 'string') {
+    throw new Error(`Failed to get URL for function: ${functionName}`);
+  }
+  return url;
 };
 
 /**
