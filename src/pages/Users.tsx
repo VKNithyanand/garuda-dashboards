@@ -907,5 +907,9 @@ const Users = () => {
         </div>
       </div>
 
-      {
+      {showUserDetail && <UserDetailModal />}
+    </DashboardLayout>
+  );
+};
 
+export default Users;
