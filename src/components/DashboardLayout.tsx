@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Sidebar } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import { TopNav } from "./TopNav";
 import { useToast } from "@/hooks/use-toast";
 import { requestIntelligenceAnalysis } from "@/lib/dashboard-intelligence";
