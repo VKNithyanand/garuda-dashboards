@@ -1,7 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import React from "react";
-import { useQuery, QueryClient } from "@tanstack/react-query";
 
 // Types for dashboard health monitoring
 export interface DashboardError {
@@ -24,7 +22,6 @@ export interface DashboardState {
   salesData?: any[];
   customersData?: any[];
   insightsData?: any[];
-  reportData?: any[];
   renderErrors: DashboardError[];
   apiErrors: DashboardError[];
   performanceMetrics: PerformanceMetrics;
@@ -103,64 +100,12 @@ export function trackApiResponseTime(endpoint: string, timeMs: number): void {
 
 // Update component data state
 export function updateDataState(key: string, data: any[]): void {
-  if (key === 'salesData' || key === 'customersData' || key === 'insightsData' || key === 'reportData') {
-    dashboardState[key] = data;
-  }
+  dashboardState[key] = data;
 }
 
 // Update component UI state
 export function updateComponentState(component: string, state: any): void {
   dashboardState.componentState[component] = state;
-}
-
-// Track report generation and download
-export function trackReportActivity(action: 'generate' | 'download', format: string, success: boolean): void {
-  console.log(`Report ${action}: ${format} - ${success ? 'Success' : 'Failed'}`);
-  
-  // We could store more detailed analytics here
-  if (!dashboardState.reportData) {
-    dashboardState.reportData = [];
-  }
-  
-  (dashboardState.reportData as any[]).push({
-    action,
-    format,
-    success,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Keep only the latest 20 report activities
-  if (dashboardState.reportData.length > 20) {
-    dashboardState.reportData.shift();
-  }
-}
-
-// Parse CSV string into JSON
-export function parseCSV(csvString: string): any[] {
-  // Split by lines
-  const lines = csvString.split('\n');
-  
-  // Extract header row
-  const headers = lines[0].split(',').map(header => header.trim());
-  
-  // Process data rows
-  const result = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    
-    const values = line.split(',');
-    const entry: Record<string, any> = {};
-    
-    headers.forEach((header, idx) => {
-      entry[header] = values[idx] ? values[idx].trim() : '';
-    });
-    
-    result.push(entry);
-  }
-  
-  return result;
 }
 
 // Clear all errors
@@ -237,8 +182,58 @@ export function initDashboardIntelligence(): void {
   }, 60000); // Check every minute
 }
 
-// Need to create a dummy queryClient for the hook to work
-const queryClient = new QueryClient();
+// Create a higher-order component for error boundary
+export function withErrorBoundary<T>(Component: React.ComponentType<T>, componentName: string) {
+  return class ErrorBoundary extends React.Component<T, { hasError: boolean }> {
+    constructor(props: T) {
+      super(props);
+      this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+      return { hasError: true };
+    }
+
+    componentDidCatch(error: Error) {
+      trackRenderError(componentName, error);
+    }
+
+    componentDidMount() {
+      // Listen for reload events for this component
+      window.addEventListener('dashboard:reload-component', this.handleReloadEvent);
+    }
+    
+    componentWillUnmount() {
+      window.removeEventListener('dashboard:reload-component', this.handleReloadEvent);
+    }
+    
+    handleReloadEvent = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.component === componentName) {
+        this.setState({ hasError: false });
+      }
+    }
+
+    render() {
+      if (this.state.hasError) {
+        // Fallback UI
+        return (
+          <div className="p-4 bg-destructive/10 rounded-md">
+            <h3 className="font-medium text-destructive">Something went wrong in {componentName}</h3>
+            <button 
+              className="mt-2 text-sm text-primary underline"
+              onClick={() => this.setState({ hasError: false })}
+            >
+              Try again
+            </button>
+          </div>
+        );
+      }
+
+      return <Component {...this.props} />;
+    }
+  };
+}
 
 // Enhanced data fetching with retry logic and monitoring
 export function useMonitoredQuery(queryKey: string[], queryFn: () => Promise<any>, options = {}) {
@@ -274,6 +269,3 @@ export function useMonitoredQuery(queryKey: string[], queryFn: () => Promise<any
     ...options,
   });
 }
-
-// Import the ErrorBoundary component to avoid circular dependencies
-export { withErrorBoundary } from "@/components/ErrorBoundary";

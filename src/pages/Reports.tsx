@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChartComponent } from "@/components/charts/BarChartComponent";
 import { useSalesByCategory, useSalesData } from "@/lib/supabase-client";
@@ -11,44 +12,24 @@ import {
   Calendar,
   Share2,
   Loader2,
+  Search,
   X,
+  Calendar as CalendarIcon,
   ChevronDown,
   Check,
   File,
   FileSpreadsheet,
-  Upload,
-  Info,
 } from "lucide-react";
 
-// Create a file downloader utility function
-const downloadFile = async (url, filename) => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up the URL object
-    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100);
-    
-    return true;
-  } catch (error) {
-    console.error('Download error:', error);
-    return false;
-  }
-};
-
-// Helper function to get edge function URL - fixed to use proper method
-const getFunctionUrl = (functionName: string): string => {
-  const url = supabase.functions.url(functionName);
-  return url || '';
-};
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const Reports = () => {
   const { toast } = useToast();
@@ -71,12 +52,6 @@ const Reports = () => {
     { id: 2, name: "Q2 Sales Report", date: "2 days ago", format: "Excel" },
     { id: 3, name: "Q3 Sales Report", date: "3 days ago", format: "CSV" },
   ]);
-  
-  // New state for custom data upload
-  const [isUploading, setIsUploading] = useState(false);
-  const [customData, setCustomData] = useState<any[] | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Generate unique categories from sales data
   const categories = ["all", ...new Set(salesData.map(sale => sale.category))];
@@ -119,9 +94,7 @@ const Reports = () => {
     setIsGenerating(true);
     try {
       // Call the analytics function
-      const { data, error } = await supabase.functions.invoke('get-analytics', {
-        body: customData ? { customData } : undefined
-      });
+      const { data, error } = await supabase.functions.invoke('get-analytics');
       
       if (error) throw error;
       
@@ -151,94 +124,37 @@ const Reports = () => {
     }
   };
 
-  const downloadReport = async (reportId: number) => {
+  const downloadReport = (reportId: number) => {
     const report = recentReports.find(r => r.id === reportId);
     if (!report) return;
     
     setIsDownloading(true);
     
-    try {
-      // Get the function URL in a type-safe way
-      const functionUrl = `${getFunctionUrl('get-analytics')}?format=${report.format.toLowerCase()}`;
+    // Simulate file download
+    setTimeout(() => {
+      // In a real application, this would be an actual file download
       
-      // Download the file with the appropriate name
-      const success = await downloadFile(
-        functionUrl, 
-        `Sales_Report_${new Date().toISOString().split('T')[0]}.${report.format.toLowerCase()}`
-      );
-      
-      if (success) {
-        toast({
-          title: "Report Downloaded",
-          description: `${report.name} has been downloaded in ${report.format} format.`,
-        });
-      } else {
-        throw new Error("Failed to download the report.");
-      }
-    } catch (error: any) {
-      console.error("Download error:", error);
       toast({
-        title: "Download Failed",
-        description: error.message || "Failed to download report. Please try again later.",
-        variant: "destructive",
+        title: "Report Downloaded",
+        description: `${report.name} has been downloaded in ${report.format} format.`,
       });
-    } finally {
+      
       setIsDownloading(false);
-    }
+    }, 1500);
   };
 
-  const handleExport = async () => {
+  const handleExport = () => {
     setIsDownloading(true);
     
-    try {
-      // Get the function URL in a type-safe way
-      const functionUrl = `${getFunctionUrl('get-analytics')}?format=${selectedFormat.toLowerCase()}`;
-      
-      if (customData) {
-        // If we have custom data, use POST method to send it
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-          },
-          body: JSON.stringify({ customData }),
-        });
-        
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = `Sales_Report_${new Date().toISOString().split('T')[0]}.${selectedFormat.toLowerCase()}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the URL object
-        setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100);
-      } else {
-        // Without custom data, use the download utility
-        await downloadFile(
-          functionUrl, 
-          `Sales_Report_${new Date().toISOString().split('T')[0]}.${selectedFormat.toLowerCase()}`
-        );
-      }
-      
+    // Simulate export process
+    setTimeout(() => {
       toast({
         title: "Report Exported",
         description: `Your report has been exported in ${selectedFormat} format.`,
       });
-    } catch (error: any) {
-      console.error("Export error:", error);
-      toast({
-        title: "Export Failed",
-        description: error.message || "Failed to export report. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
+      
       setIsDownloading(false);
-    }
+    }, 1500);
   };
 
   const clearFilters = () => {
@@ -261,98 +177,6 @@ const Reports = () => {
       default:
         return <FileText className="h-4 w-4" />;
     }
-  };
-  
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    setIsUploading(true);
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        // Parse CSV or JSON based on file type
-        let parsedData;
-        if (file.type === 'application/json') {
-          parsedData = JSON.parse(e.target?.result as string);
-        } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-          parsedData = parseCSV(e.target?.result as string);
-        } else {
-          throw new Error('Unsupported file format. Please upload CSV or JSON.');
-        }
-        
-        // Validate the data structure
-        if (Array.isArray(parsedData) && parsedData.length > 0) {
-          setCustomData(parsedData);
-          toast({
-            title: "Data Uploaded",
-            description: `Successfully uploaded ${parsedData.length} records.`,
-          });
-          setShowUploadModal(false);
-        } else {
-          throw new Error('Invalid data format. Please upload a valid dataset.');
-        }
-      } catch (error: any) {
-        toast({
-          title: "Upload Error",
-          description: error.message || "Failed to parse the uploaded file.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsUploading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-    };
-    
-    reader.onerror = () => {
-      toast({
-        title: "Upload Error",
-        description: "Failed to read the file.",
-        variant: "destructive",
-      });
-      setIsUploading(false);
-    };
-    
-    if (file.type === 'application/json' || file.type === 'text/csv' || file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      toast({
-        title: "Unsupported Format",
-        description: "Please upload a CSV or JSON file.",
-        variant: "destructive",
-      });
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-  
-  // Parse CSV to JSON
-  const parseCSV = (csv: string) => {
-    const lines = csv.split('\n');
-    const headers = lines[0].split(',').map(header => header.trim());
-    
-    return lines.slice(1).filter(line => line.trim()).map(line => {
-      const values = line.split(',').map(value => value.trim());
-      return headers.reduce((obj, header, index) => {
-        obj[header] = values[index];
-        return obj;
-      }, {} as Record<string, string>);
-    });
-  };
-  
-  // Clear custom data
-  const clearCustomData = () => {
-    setCustomData(null);
-    toast({
-      title: "Custom Data Cleared",
-      description: "Reverted to default database data.",
-    });
   };
 
   return (
@@ -424,14 +248,6 @@ const Reports = () => {
             </div>
             
             <button 
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-              onClick={() => setShowUploadModal(true)}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Data
-            </button>
-            
-            <button 
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
               onClick={handleExport}
               disabled={isDownloading}
@@ -450,26 +266,6 @@ const Reports = () => {
             </button>
           </div>
         </div>
-
-        {customData && (
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md flex items-center justify-between">
-            <div className="flex items-center">
-              <Info className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
-              <div>
-                <p className="text-sm font-medium">Using Custom Dataset</p>
-                <p className="text-xs text-muted-foreground">
-                  Showing visualization based on your uploaded data ({customData.length} records)
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={clearCustomData}
-              className="text-xs text-primary hover:underline"
-            >
-              Revert to Default Data
-            </button>
-          </div>
-        )}
 
         <div className="grid gap-4">
           <div className="dashboard-card">
@@ -681,73 +477,6 @@ const Reports = () => {
           </div>
         </div>
       </div>
-
-      {/* File Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Upload Dataset</h3>
-              <button onClick={() => setShowUploadModal(false)}>
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Upload a CSV or JSON file to visualize your own data. The data will be used for visualization and export but won't be saved to the database.
-                </p>
-                
-                <div className="border-2 border-dashed border-input rounded-md p-6 flex flex-col items-center justify-center">
-                  <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium">Drag & drop file or click to browse</p>
-                  <p className="text-xs text-muted-foreground mb-2">Supports CSV and JSON formats</p>
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".csv,.json,application/json,text/csv"
-                    className="hidden"
-                  />
-                  
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 mt-2"
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>Browse Files</>
-                    )}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input h-9 px-4 py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-                  disabled={isUploading}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,28 +66,15 @@ export const useAddCustomer = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (newCustomer: { name: string; email: string }) => {
-      // First, ensure we have the user's auth session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Authentication required to add customers');
-      }
-      
+    mutationFn: async (customerData: { name: string; email: string }) => {
       const { data, error } = await supabase
         .from('customers')
-        .insert([
-          { 
-            name: newCustomer.name, 
-            email: newCustomer.email,
-            // Ensure we're setting the user_id to the authenticated user's ID for RLS
-            created_by: session.user.id
-          }
-        ])
-        .select();
-        
+        .insert([customerData])
+        .select()
+        .single();
+      
       if (error) throw error;
-      return data[0];
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
