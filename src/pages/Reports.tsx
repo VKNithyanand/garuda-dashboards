@@ -44,9 +44,10 @@ const downloadFile = async (url, filename) => {
   }
 };
 
-// Helper function to get edge function URL
-const getFunctionUrl = (functionName: string) => {
-  return `${supabase.functions.url(functionName)}`;
+// Helper function to get edge function URL - fixed to use proper method
+const getFunctionUrl = (functionName: string): string => {
+  const url = supabase.functions.url(functionName);
+  return url || '';
 };
 
 const Reports = () => {

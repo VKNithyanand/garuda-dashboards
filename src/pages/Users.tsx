@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,14 +49,33 @@ const Users = () => {
     location: "",
     bio: ""
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  // Converting customers to users with additional info
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          setIsAuthenticated(!!session);
+        }
+      );
+      
+      return () => {
+        authListener?.subscription.unsubscribe();
+      };
+    };
+    
+    checkAuth();
+  }, []);
+  
   const users = customers.map(customer => ({
     id: customer.id,
     name: customer.name,
     email: customer.email,
-    role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)], // Random role for demo
-    status: Math.random() > 0.2 ? "Active" : "Away", // Random status
+    role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)],
+    status: Math.random() > 0.2 ? "Active" : "Away",
     lastActive: customer.last_active ? new Date(customer.last_active).toLocaleString() : "Never",
     department: ["Engineering", "Marketing", "Sales", "Support"][Math.floor(Math.random() * 4)],
     location: ["New York", "London", "Tokyo", "Berlin", "Sydney"][Math.floor(Math.random() * 5)],
@@ -65,7 +83,6 @@ const Users = () => {
     bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia."
   }));
   
-  // Apply filters and search
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === "" || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,6 +123,14 @@ const Users = () => {
   }
 
   const handleAddUser = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to add users.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsAddingUser(true);
   };
 
@@ -115,6 +140,15 @@ const Users = () => {
   };
 
   const handleSaveUser = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to add users.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!newUser.name || !newUser.email) {
       toast({
         title: "Validation Error",
@@ -124,7 +158,6 @@ const Users = () => {
       return;
     }
     
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newUser.email)) {
       toast({
@@ -147,7 +180,6 @@ const Users = () => {
         description: `${newUser.name} has been added successfully.`,
       });
       
-      // Reset form
       setNewUser({ name: "", email: "", role: "User" });
       setIsAddingUser(false);
       
@@ -180,10 +212,8 @@ const Users = () => {
 
   const selectAllUsers = () => {
     if (selectedUsers.length === filteredUsers.length) {
-      // If all are selected, unselect all
       setSelectedUsers([]);
     } else {
-      // Otherwise select all
       setSelectedUsers(filteredUsers.map(user => user.id));
     }
   };
@@ -200,10 +230,7 @@ const Users = () => {
 
     setActiveAction(action);
     try {
-      // Simulate processing time for the action
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real app, we would call an API to perform the action on the selected users
       
       const actionMap: Record<string, string> = {
         "invite": "invited",
@@ -212,7 +239,6 @@ const Users = () => {
       };
       
       if (action === "delete") {
-        // Actually delete the users
         for (const userId of selectedUsers) {
           await deleteCustomer.mutateAsync(userId);
         }
@@ -223,7 +249,6 @@ const Users = () => {
         description: `Successfully ${actionMap[action]} ${selectedUsers.length} user(s).`,
       });
       
-      // Clear selected users after action
       setSelectedUsers([]);
       
     } catch (error: any) {
@@ -240,7 +265,6 @@ const Users = () => {
   const performQuickAction = async (action: string) => {
     setActiveAction(action);
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const actionMessages: Record<string, string> = {
@@ -264,6 +288,15 @@ const Users = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to delete users.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       await deleteCustomer.mutateAsync(userId);
       
@@ -284,8 +317,6 @@ const Users = () => {
     if (!showUserDetail) return;
     
     try {
-      // In a real app, this would update the user details in the database
-      // For this demo, we'll just simulate it
       await new Promise(resolve => setTimeout(resolve, 800));
       
       toast({
@@ -302,8 +333,7 @@ const Users = () => {
       });
     }
   };
-  
-  // Create the dropdown menu for a user
+
   const UserActionMenu = ({ userId, userName }: { userId: string, userName: string }) => {
     const [showMenu, setShowMenu] = useState(false);
     
@@ -383,7 +413,6 @@ const Users = () => {
     );
   };
 
-  // User Detail Modal
   const UserDetailModal = () => {
     if (!showUserDetail) return null;
     
@@ -521,6 +550,20 @@ const Users = () => {
 
   return (
     <DashboardLayout>
+      {!isAuthenticated && (
+        <div className="p-4 mb-4 bg-destructive/10 rounded-md">
+          <div className="flex items-center">
+            <X className="h-5 w-5 text-destructive mr-2" />
+            <div>
+              <h3 className="font-medium text-destructive">Authentication Required</h3>
+              <p className="text-sm text-muted-foreground">
+                You need to be logged in to manage users. Please sign in to continue.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="space-y-8 animate-fade-up">
         <div className="flex items-center justify-between">
           <div>
@@ -864,10 +907,5 @@ const Users = () => {
         </div>
       </div>
 
-      {/* User Detail Modal */}
-      {showUserDetail && <UserDetailModal />}
-    </DashboardLayout>
-  );
-};
+      {
 
-export default Users;
