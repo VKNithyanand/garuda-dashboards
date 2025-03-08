@@ -8,6 +8,7 @@ import FeedbackTab from "./FeedbackTab";
 import IntegrationsTab from "./IntegrationsTab";
 import SettingsSidebar from "./SettingsSidebar";
 import { useToast } from "@/hooks/use-toast";
+import { QueryInput } from "@/components/nlp/QueryInput";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -58,6 +59,24 @@ const Settings = () => {
             
             {activeSettingsTab === "integrations" && (
               <IntegrationsTab userId={userId} />
+            )}
+
+            {activeSettingsTab === "nlp" && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Natural Language Queries</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Ask questions about your business data in natural language. 
+                    For example: "Show me last month's revenue" or "Which products have the highest sales?"
+                  </p>
+                </div>
+                <QueryInput onComplete={() => {
+                  toast({
+                    title: "Query Processed",
+                    description: "Your request has been analyzed and results are displayed.",
+                  });
+                }} />
+              </div>
             )}
           </div>
         </div>

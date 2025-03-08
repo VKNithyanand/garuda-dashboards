@@ -1,6 +1,6 @@
 
 import React from "react";
-import { MessageSquareHeart, Globe } from "lucide-react";
+import { MessageSquareHeart, Globe, Brain } from "lucide-react";
 
 interface SettingsSidebarProps {
   activeTab: string;
@@ -28,6 +28,15 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ activeTab, setActiveT
         >
           <Globe className="h-4 w-4" />
           <span>Integrations</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab("nlp")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
+            activeTab === "nlp" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+          }`}
+        >
+          <Brain className="h-4 w-4" />
+          <span>NLP Queries</span>
         </button>
       </div>
     </div>
