@@ -14,11 +14,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <div className={`transition-all duration-300 ${sidebarOpen ? "pl-64" : "pl-0 md:pl-64"}`}>
-        <TopNav setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
+        <TopNav />
         <main className="container py-6 animate-fade-in">
           {children}
         </main>
       </div>
     </div>
   );
-};
+}

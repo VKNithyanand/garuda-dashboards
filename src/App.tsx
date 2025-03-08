@@ -1,20 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from "@/components/theme-provider"
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { ThemeProvider } from "@/components/theme-provider";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { DataProvider } from './context/DataContext';
-import Index from './pages';
-import Settings from './pages/settings';
-import Analytics from './pages/analytics';
-import Insights from './pages/insights';
-import Reports from './pages/reports';
-import Users from './pages/users';
-import NotFound from './pages/NotFound';
-import { Toaster } from "@/components/ui/toaster"
-import Auth from './pages/Auth';
-import ResetPassword from './pages/ResetPassword';
-import UpdatePassword from './pages/UpdatePassword';
+import { Toaster } from "@/components/ui/toaster";
+
+// Placeholder components for now, will be replaced by actual implementations
+const Index = () => <div>Dashboard Page</div>;
+const Settings = () => <div>Settings Page</div>;
+const Analytics = () => <div>Analytics Page</div>;
+const Insights = () => <div>Insights Page</div>;
+const Reports = () => <div>Reports Page</div>;
+const Users = () => <div>Users Page</div>;
+const NotFound = () => <div>404 Not Found</div>;
+const Auth = () => <div>Auth Page</div>;
+const ResetPassword = () => <div>Reset Password Page</div>;
+const UpdatePassword = () => <div>Update Password Page</div>;
 
 function App() {
   const [queryClient] = useState(new QueryClient());
