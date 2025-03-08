@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import NotificationsTab from "./NotificationsTab";
 import IntegrationsTab from "./IntegrationsTab";
 import ProfileTab from "./ProfileTab";
+import SecurityTab from "./SecurityTab";
 import SettingsSidebar from "./SettingsSidebar";
 
 const Settings = () => {
@@ -74,6 +75,10 @@ const Settings = () => {
                 userId={userId}
                 userEmail={userEmail}
               />
+            )}
+            
+            {activeSettingsTab === "security" && (
+              <SecurityTab userId={userId} />
             )}
             
             {activeSettingsTab === "notifications" && (

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Bell, Globe, User } from "lucide-react";
+import { Bell, Globe, User, Shield } from "lucide-react";
 
 interface SettingsSidebarProps {
   activeTab: string;
@@ -28,6 +28,15 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ activeTab, setActiveT
         >
           <Bell className="h-4 w-4" />
           <span>Notifications</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab("security")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
+            activeTab === "security" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+          }`}
+        >
+          <Shield className="h-4 w-4" />
+          <span>Security</span>
         </button>
         <button 
           onClick={() => setActiveTab("integrations")}
