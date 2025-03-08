@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useInsights } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ import { useData } from "@/contexts/DataContext";
 import { QueryResults } from "@/components/nlp/QueryResults";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CompetitorBenchmarking } from "@/components/CompetitorBenchmarking";
 
 interface Insight {
   id: string;
@@ -201,13 +202,11 @@ const Insights = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-fade-up">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-semibold text-2xl tracking-tight">Insights</h1>
-            <p className="text-muted-foreground">
-              AI-powered insights and recommendations
-            </p>
+            <h1 className="font-semibold text-2xl tracking-tight">Business Insights</h1>
+            <p className="text-muted-foreground">AI-powered analysis and recommendations</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -587,6 +586,8 @@ const Insights = () => {
           </>
         )}
       </div>
+
+      <CompetitorBenchmarking />
     </DashboardLayout>
   );
 };
