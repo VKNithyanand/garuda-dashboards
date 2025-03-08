@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
 import { VoiceAssistant } from "./VoiceAssistant";
+import { Button } from "./ui/button";
+import { ExternalLink } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -32,6 +34,19 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       
       {/* Add a subtle gradient overlay at the bottom */}
       <div className="fixed bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/80 to-transparent pointer-events-none z-0"></div>
+      
+      {/* Cricbuzz link button */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="gap-2 bg-white shadow-md hover:bg-gray-100 border-brand-blue"
+          onClick={() => window.open('https://www.cricbuzz.com', '_blank')}
+        >
+          <ExternalLink className="h-4 w-4 text-brand-blue" />
+          <span className="text-brand-blue">Cricbuzz</span>
+        </Button>
+      </div>
     </div>
   );
 };
