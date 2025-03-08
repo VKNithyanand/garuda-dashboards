@@ -10,7 +10,7 @@ import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Insights from "./pages/Insights";
 import Users from "./pages/Users";
-import Settings from "./pages/Settings";
+import Settings from "./pages/settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
