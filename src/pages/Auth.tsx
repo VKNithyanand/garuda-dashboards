@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -27,19 +26,6 @@ const Auth = () => {
     };
     
     checkUser();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          navigate("/");
-        }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -70,12 +56,21 @@ const Auth = () => {
             variant: "destructive",
           });
         } else {
-          toast({
-            title: "Account created!",
-            description: "You can now sign in with your credentials.",
-          });
-          // Automatically switch to login view
-          setIsSignUp(false);
+          // If auto-confirm is enabled or email verification is not required
+          if (data.session) {
+            toast({
+              title: "Account created!",
+              description: "You're now logged in to the dashboard.",
+            });
+            navigate("/");
+          } else {
+            toast({
+              title: "Account created!",
+              description: "Please verify your email if required, or sign in.",
+            });
+            // Automatically switch to login view
+            setIsSignUp(false);
+          }
         }
       } else {
         // Sign in
@@ -94,6 +89,7 @@ const Auth = () => {
         navigate("/");
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         title: "Authentication error",
         description: error.message,

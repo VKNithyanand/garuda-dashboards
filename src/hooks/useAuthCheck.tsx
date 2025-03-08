@@ -11,6 +11,8 @@ export const useAuthCheck = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
         setLoading(true);
@@ -18,22 +20,30 @@ export const useAuthCheck = () => {
         
         if (!session) {
           // No active session, redirect to auth page
-          navigate('/auth');
+          if (isMounted) {
+            navigate('/auth');
+          }
           return;
         }
         
         // Session exists, set user
-        setUser(session.user);
+        if (isMounted) {
+          setUser(session.user);
+        }
       } catch (error) {
         console.error('Auth check error:', error);
-        toast({
-          title: "Authentication Error",
-          description: "Please sign in again",
-          variant: "destructive",
-        });
-        navigate('/auth');
+        if (isMounted) {
+          toast({
+            title: "Authentication Error",
+            description: "Please sign in again",
+            variant: "destructive",
+          });
+          navigate('/auth');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
@@ -42,17 +52,24 @@ export const useAuthCheck = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+        
+        console.log("Auth state change:", event);
+        
         if (event === 'SIGNED_IN') {
           setUser(session?.user || null);
           navigate('/');
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           navigate('/auth');
+        } else if (event === 'USER_UPDATED') {
+          setUser(session?.user || null);
         }
       }
     );
     
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, [navigate, toast]);
