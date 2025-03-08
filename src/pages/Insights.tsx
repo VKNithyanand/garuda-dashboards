@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { NLPQueriesSection } from "@/components/NLPQueriesSection";
 import { useInsights } from "@/lib/supabase-client";
