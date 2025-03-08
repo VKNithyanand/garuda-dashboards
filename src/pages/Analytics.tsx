@@ -11,6 +11,10 @@ import { Loader2, AlertCircle, TrendingUp, DollarSign, Users, ShoppingCart, Tag,
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
+import { CsvUploader } from "@/components/CsvUploader";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { UploadCloud } from "lucide-react";
 
 const Analytics = () => {
   const { toast } = useToast();
@@ -42,9 +46,13 @@ const Analytics = () => {
     }
   ]);
   
+  // Get data from DataContext (uploaded via CSV)
+  const { salesData: contextSalesData, customersData, categoryData: contextCategoryData, setSalesData, setCategoryData } = useData();
+  
   // Track chart data changes for visualization
-  const [salesData, setSalesData] = useState<any>(null);
-  const [categoryData, setCategoryData] = useState<any>(null);
+  const [salesData, setSalesChartData] = useState<any>(null);
+  const [categoryData, setCategoryChartData] = useState<any>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   const { data: analyticsData, isLoading, error } = useQuery({
     queryKey: ["analytics", period],
@@ -66,13 +74,98 @@ const Analytics = () => {
     }
   });
   
-  // Set initial data when analytics loads
+  // Determine which data to use - prefer context data if available
   useEffect(() => {
-    if (analyticsData) {
-      setSalesData(analyticsData.monthlySalesData);
-      setCategoryData(analyticsData.categoriesData);
+    // For monthly sales data
+    if (contextSalesData && contextSalesData.length > 0) {
+      // Process sales data by month for the chart
+      const salesByMonth: Record<string, number> = {};
+      
+      contextSalesData.forEach(sale => {
+        const date = new Date(sale.transaction_date || sale.date);
+        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        if (!salesByMonth[monthYear]) {
+          salesByMonth[monthYear] = 0;
+        }
+        
+        salesByMonth[monthYear] += Number(sale.amount || sale.value || 0);
+      });
+      
+      const monthlySalesData = Object.entries(salesByMonth)
+        .map(([date, value]) => ({
+          date,
+          value,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      setSalesChartData(monthlySalesData);
+    } else if (analyticsData) {
+      setSalesChartData(analyticsData.monthlySalesData);
     }
-  }, [analyticsData]);
+    
+    // For category data
+    if (contextCategoryData && contextCategoryData.length > 0) {
+      setCategoryChartData(contextCategoryData);
+    } else if (analyticsData) {
+      setCategoryChartData(analyticsData.categoriesData);
+    }
+  }, [analyticsData, contextSalesData, contextCategoryData]);
+
+  const handleSalesDataLoaded = (data: any[]) => {
+    setSalesData(data);
+    
+    // Process sales data to group by category for chart
+    const categoryMap = new Map<string, number>();
+    
+    data.forEach(sale => {
+      const category = sale.category || "Uncategorized";
+      const amount = Number(sale.amount || sale.value || 0);
+      
+      if (categoryMap.has(category)) {
+        categoryMap.set(category, categoryMap.get(category)! + amount);
+      } else {
+        categoryMap.set(category, amount);
+      }
+    });
+    
+    // Convert map to array of objects for the chart
+    const chartData = Array.from(categoryMap.entries()).map(([name, value]) => ({
+      name,
+      value
+    }));
+    
+    setCategoryData(chartData);
+    setShowUploadDialog(false);
+    
+    // Prepare data for monthly chart
+    const salesByMonth: Record<string, number> = {};
+    
+    data.forEach(sale => {
+      const date = new Date(sale.transaction_date || sale.date);
+      const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!salesByMonth[monthYear]) {
+        salesByMonth[monthYear] = 0;
+      }
+      
+      salesByMonth[monthYear] += Number(sale.amount || sale.value || 0);
+    });
+    
+    const monthlySalesData = Object.entries(salesByMonth)
+      .map(([date, value]) => ({
+        date,
+        value,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    setSalesChartData(monthlySalesData);
+    
+    toast({
+      title: "Data Loaded for Analytics",
+      description: `Successfully processed ${data.length} sales records.`,
+    });
+  };
 
   const handleTakeAction = async (id: string) => {
     try {
@@ -182,6 +275,21 @@ const Analytics = () => {
     });
   }
 
+  // Calculate total sales from the dataset
+  const totalSales = contextSalesData && contextSalesData.length > 0
+    ? contextSalesData.reduce((sum, sale) => sum + Number(sale.amount || sale.value || 0), 0)
+    : analyticsData?.totalSales || 0;
+
+  // Calculate customers count
+  const customersCount = customersData && customersData.length > 0
+    ? customersData.length
+    : 120; // Default fallback
+  
+  // Calculate orders count based on sales data
+  const ordersCount = contextSalesData && contextSalesData.length > 0
+    ? contextSalesData.length
+    : 450; // Default fallback
+
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
   return (
@@ -192,16 +300,38 @@ const Analytics = () => {
             <h1 className="font-semibold text-2xl tracking-tight">Analytics Dashboard</h1>
             <p className="text-muted-foreground">Get insights into your business performance</p>
           </div>
-          <Tabs defaultValue="week" className="w-[400px]" value={period} onValueChange={setPeriod}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="year">Year</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex gap-2">
+            <Tabs defaultValue="week" className="w-[400px]" value={period} onValueChange={setPeriod}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="week">Week</TabsTrigger>
+                <TabsTrigger value="month">Month</TabsTrigger>
+                <TabsTrigger value="year">Year</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Upload Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Upload Sales Data</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <CsvUploader 
+                    onDataLoaded={handleSalesDataLoaded} 
+                    type="sales"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
-        {isLoading ? (
+        {isLoading && !salesData ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -210,19 +340,19 @@ const Analytics = () => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
                 title="Total Revenue"
-                value={analyticsData?.totalSales ? `$${analyticsData.totalSales.toFixed(2)}` : "$0.00"}
+                value={`$${totalSales.toFixed(2)}`}
                 description="+20.1% from last month"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               />
               <StatsCard
                 title="New Customers"
-                value="120"
+                value={customersCount.toString()}
                 description="+10.1% from last month"
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
               />
               <StatsCard
                 title="Total Orders"
-                value="450"
+                value={ordersCount.toString()}
                 description="+12.2% from last month"
                 icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
               />
@@ -241,26 +371,38 @@ const Analytics = () => {
                   <CardDescription>Monthly sales breakdown</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={salesData || analyticsData?.monthlySalesData || []}>
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.toLocaleString('default', { month: 'short' })}`;
-                        }}
-                      />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value: number) => [`$${value.toFixed(2)}`, 'Sales']}
-                        labelFormatter={(label) => {
-                          const date = new Date(label);
-                          return `${date.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!salesData ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-lg mb-2">No Sales Data Available</h3>
+                      <p className="text-muted-foreground mb-4">Upload a CSV file to see sales analytics.</p>
+                      <Button onClick={() => setShowUploadDialog(true)}>
+                        <UploadCloud className="mr-2 h-4 w-4" />
+                        Upload CSV
+                      </Button>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart data={salesData}>
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return `${date.toLocaleString('default', { month: 'short' })}`;
+                          }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Sales']}
+                          labelFormatter={(label) => {
+                            const date = new Date(label);
+                            return `${date.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+                          }}
+                        />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               <Card className="col-span-3">
@@ -269,26 +411,38 @@ const Analytics = () => {
                   <CardDescription>Distribution of sales across product categories</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <PieChart>
-                      <Pie
-                        data={categoryData || analyticsData?.categoriesData || []}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {(categoryData || analyticsData?.categoriesData || []).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Sales']} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {!categoryData ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="font-medium text-lg mb-2">No Category Data Available</h3>
+                      <p className="text-muted-foreground mb-4">Upload a CSV file to see category analytics.</p>
+                      <Button onClick={() => setShowUploadDialog(true)}>
+                        <UploadCloud className="mr-2 h-4 w-4" />
+                        Upload CSV
+                      </Button>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Sales']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
