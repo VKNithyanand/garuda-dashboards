@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useUserSettings } from "@/lib/supabase-client";
@@ -70,12 +69,7 @@ const Settings = () => {
                     For example: "Show me last month's revenue" or "Which products have the highest sales?"
                   </p>
                 </div>
-                <QueryInput onComplete={() => {
-                  toast({
-                    title: "Query Processed",
-                    description: "Your request has been analyzed and results are displayed.",
-                  });
-                }} />
+                <QueryInput />
               </div>
             )}
           </div>

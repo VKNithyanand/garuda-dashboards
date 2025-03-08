@@ -35,7 +35,7 @@ export const NLPQueryInput = () => {
           </DialogHeader>
           
           <div className="pt-2">
-            <QueryInput onComplete={() => {}} />
+            <QueryInput />
           </div>
           
           <DialogFooter>
