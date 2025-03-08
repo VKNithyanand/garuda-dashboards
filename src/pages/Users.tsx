@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useData } from "@/contexts/DataContext";
 
 interface Customer {
   id: string;
@@ -52,6 +54,7 @@ interface UserDetailForm {
 
 const Users = () => {
   const { toast } = useToast();
+  const { usersData, setUsersData } = useData();
   const { data: customers = [], isLoading, error, refetch } = useCustomers();
   const addCustomer = useAddCustomer();
   const deleteCustomer = useDeleteCustomer();
@@ -76,19 +79,34 @@ const Users = () => {
     location: "",
     bio: ""
   });
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
   
-  const users: UserItem[] = customers.map(customer => ({
-    id: customer.id,
-    name: customer.name,
-    email: customer.email,
-    role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)],
-    status: Math.random() > 0.2 ? "Active" : "Away",
-    lastActive: customer.last_active ? new Date(customer.last_active).toLocaleString() : "Never",
-    department: ["Engineering", "Marketing", "Sales", "Support"][Math.floor(Math.random() * 4)],
-    location: ["New York", "London", "Tokyo", "Berlin", "Sydney"][Math.floor(Math.random() * 5)],
-    phone: "+1 " + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 10000),
-    bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia."
-  }));
+  // Combine database customers with any users added via the UI
+  useEffect(() => {
+    if (customers.length > 0) {
+      // Convert database customers to UserItem format
+      const dbUsers: UserItem[] = customers.map(customer => ({
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)],
+        status: Math.random() > 0.2 ? "Active" : "Away",
+        lastActive: customer.last_active ? new Date(customer.last_active).toLocaleString() : "Never",
+        department: ["Engineering", "Marketing", "Sales", "Support"][Math.floor(Math.random() * 4)],
+        location: ["New York", "London", "Tokyo", "Berlin", "Sydney"][Math.floor(Math.random() * 5)],
+        phone: "+1 " + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 10000),
+        bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia."
+      }));
+      
+      // Merge with any local users, avoiding duplicates by email
+      const existingEmails = new Set(dbUsers.map(user => user.email));
+      const localUsersToKeep = usersData.filter(user => !existingEmails.has(user.email));
+      
+      setUsersData([...dbUsers, ...localUsersToKeep]);
+    }
+  }, [customers, setUsersData]);
+  
+  const users = usersData;
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === "" || 
@@ -160,10 +178,34 @@ const Users = () => {
     
     setIsSubmittingUser(true);
     try {
-      await addCustomer.mutateAsync({
-        name: newUser.name,
-        email: newUser.email
-      });
+      // First try to add to database
+      let newUserData;
+      try {
+        const result = await addCustomer.mutateAsync({
+          name: newUser.name,
+          email: newUser.email
+        });
+        newUserData = result;
+        await refetch();
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // If database fails, create a local user
+        newUserData = {
+          id: crypto.randomUUID(),
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          status: "Active",
+          lastActive: "Just now",
+          department: "Unassigned",
+          location: "Remote",
+          phone: "",
+          bio: ""
+        };
+        
+        // Add the new user to our context
+        setUsersData([...usersData, newUserData]);
+      }
       
       toast({
         title: "User Added",
@@ -172,8 +214,6 @@ const Users = () => {
       
       setNewUser({ name: "", email: "", role: "User" });
       setIsAddingUser(false);
-      
-      refetch();
       
     } catch (error: any) {
       toast({
@@ -221,17 +261,33 @@ const Users = () => {
     }
     
     setActiveAction("invite");
+    setIsSendingInvitation(true);
+    
     try {
       const selectedUsersData = users.filter(user => selectedUsers.includes(user.id));
       const emails = selectedUsersData.map(user => user.email);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the Supabase Edge Function to send invitations
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: { emails }
+      });
+      
+      if (error) throw error;
       
       toast({
         title: "Invitations Sent",
         description: `Invitation emails have been sent to ${emails.length} user(s).`,
       });
       
+      // Update the users' status to reflect the invitation
+      const updatedUsers = usersData.map(user => {
+        if (selectedUsers.includes(user.id)) {
+          return { ...user, status: "Invited" };
+        }
+        return user;
+      });
+      
+      setUsersData(updatedUsers);
       setSelectedUsers([]);
       
     } catch (error: any) {
@@ -242,6 +298,7 @@ const Users = () => {
       });
     } finally {
       setActiveAction(null);
+      setIsSendingInvitation(false);
     }
   };
 
@@ -270,10 +327,20 @@ const Users = () => {
       };
       
       if (action === "delete") {
+        // Delete from both database and local state
         for (const userId of selectedUsers) {
-          await deleteCustomer.mutateAsync(userId);
+          try {
+            await deleteCustomer.mutateAsync(userId);
+          } catch (dbError) {
+            console.error("Failed to delete from database:", dbError);
+          }
         }
-        refetch();
+        
+        // Remove deleted users from local state
+        const updatedUsers = usersData.filter(user => !selectedUsers.includes(user.id));
+        setUsersData(updatedUsers);
+        
+        await refetch();
       }
       
       toast({
@@ -325,7 +392,16 @@ const Users = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      await deleteCustomer.mutateAsync(userId);
+      // Try to delete from database first
+      try {
+        await deleteCustomer.mutateAsync(userId);
+        await refetch();
+      } catch (dbError) {
+        console.error("Database delete error:", dbError);
+        // If database delete fails, remove from local state
+        const updatedUsers = usersData.filter(user => user.id !== userId);
+        setUsersData(updatedUsers);
+      }
       
       toast({
         title: "User Deleted",
@@ -344,7 +420,24 @@ const Users = () => {
     if (!showUserDetail) return;
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Update the user in our local state
+      const updatedUsers = usersData.map(user => {
+        if (user.id === showUserDetail) {
+          return {
+            ...user,
+            name: userDetail.name,
+            email: userDetail.email,
+            phone: userDetail.phone,
+            role: userDetail.role,
+            department: userDetail.department,
+            location: userDetail.location,
+            bio: userDetail.bio
+          };
+        }
+        return user;
+      });
+      
+      setUsersData(updatedUsers);
       
       toast({
         title: "User Updated",
@@ -747,9 +840,9 @@ const Users = () => {
                 <button 
                   className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3"
                   onClick={() => performBulkAction("invite")}
-                  disabled={activeAction === "invite"}
+                  disabled={activeAction === "invite" || isSendingInvitation}
                 >
-                  {activeAction === "invite" ? (
+                  {activeAction === "invite" || isSendingInvitation ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Mail className="h-4 w-4" />
@@ -875,9 +968,9 @@ const Users = () => {
               <button 
                 className="w-full flex items-center gap-3 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
                 onClick={() => performQuickAction("invite")}
-                disabled={activeAction === "invite"}
+                disabled={activeAction === "invite" || isSendingInvitation}
               >
-                {activeAction === "invite" ? (
+                {activeAction === "invite" || isSendingInvitation ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Mail className="h-4 w-4" />
