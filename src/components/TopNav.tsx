@@ -5,6 +5,7 @@ import { Bell, Search, Menu, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 
 interface TopNavProps {
   setSidebarOpen: (open: boolean) => void;
@@ -109,8 +110,9 @@ export const TopNav = ({ setSidebarOpen, sidebarOpen }: TopNavProps) => {
           />
         </div>
         <div className="flex items-center space-x-2">
-          <button 
-            className="h-8 w-8 rounded-full hover:bg-accent flex items-center justify-center"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleTheme}
             aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
           >
@@ -119,10 +121,13 @@ export const TopNav = ({ setSidebarOpen, sidebarOpen }: TopNavProps) => {
             ) : (
               <Moon className="h-4 w-4" />
             )}
-          </button>
-          <button className="h-8 w-8 rounded-full hover:bg-accent flex items-center justify-center">
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+          >
             <Bell className="h-4 w-4" />
-          </button>
+          </Button>
           <Avatar>
             <AvatarImage src="/placeholder.svg" />
             <AvatarFallback>JD</AvatarFallback>
