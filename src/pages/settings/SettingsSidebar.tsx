@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Bell, Globe } from "lucide-react";
+import { MessageSquareHeart, Globe } from "lucide-react";
 
 interface SettingsSidebarProps {
   activeTab: string;
@@ -12,13 +12,13 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ activeTab, setActiveT
     <div className="dashboard-card md:col-span-2">
       <div className="space-y-1 mb-6">
         <button 
-          onClick={() => setActiveTab("notifications")}
+          onClick={() => setActiveTab("feedback")}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-            activeTab === "notifications" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+            activeTab === "feedback" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
           }`}
         >
-          <Bell className="h-4 w-4" />
-          <span>Notifications</span>
+          <MessageSquareHeart className="h-4 w-4" />
+          <span>Feedback</span>
         </button>
         <button 
           onClick={() => setActiveTab("integrations")}
