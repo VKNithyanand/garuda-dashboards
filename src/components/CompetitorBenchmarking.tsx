@@ -18,7 +18,8 @@ import {
   Tooltip,
   Legend,
   LineChart,
-  Line
+  Line,
+  Cell
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 
