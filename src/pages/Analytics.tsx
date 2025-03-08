@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts";
@@ -7,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatsCard } from "@/components/StatsCard";
-import { Loader2, AlertCircle, TrendingUp, DollarSign, Users, ShoppingCart, Tag, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, TrendingUp, DollarSign, Users, ShoppingCart, Tag, AlertTriangle, CheckCircle, FileText, UploadCloud } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { CsvUploader } from "@/components/CsvUploader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UploadCloud } from "lucide-react";
 
 const Analytics = () => {
   const { toast } = useToast();
@@ -46,10 +44,8 @@ const Analytics = () => {
     }
   ]);
   
-  // Get data from DataContext (uploaded via CSV)
   const { salesData: contextSalesData, customersData, categoryData: contextCategoryData, setSalesData, setCategoryData } = useData();
   
-  // Track chart data changes for visualization
   const [salesData, setSalesChartData] = useState<any>(null);
   const [categoryData, setCategoryChartData] = useState<any>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -74,11 +70,8 @@ const Analytics = () => {
     }
   });
   
-  // Determine which data to use - prefer context data if available
   useEffect(() => {
-    // For monthly sales data
     if (contextSalesData && contextSalesData.length > 0) {
-      // Process sales data by month for the chart
       const salesByMonth: Record<string, number> = {};
       
       contextSalesData.forEach(sale => {
@@ -104,7 +97,6 @@ const Analytics = () => {
       setSalesChartData(analyticsData.monthlySalesData);
     }
     
-    // For category data
     if (contextCategoryData && contextCategoryData.length > 0) {
       setCategoryChartData(contextCategoryData);
     } else if (analyticsData) {
@@ -115,7 +107,6 @@ const Analytics = () => {
   const handleSalesDataLoaded = (data: any[]) => {
     setSalesData(data);
     
-    // Process sales data to group by category for chart
     const categoryMap = new Map<string, number>();
     
     data.forEach(sale => {
@@ -129,7 +120,6 @@ const Analytics = () => {
       }
     });
     
-    // Convert map to array of objects for the chart
     const chartData = Array.from(categoryMap.entries()).map(([name, value]) => ({
       name,
       value
@@ -138,7 +128,6 @@ const Analytics = () => {
     setCategoryData(chartData);
     setShowUploadDialog(false);
     
-    // Prepare data for monthly chart
     const salesByMonth: Record<string, number> = {};
     
     data.forEach(sale => {
@@ -178,7 +167,6 @@ const Analytics = () => {
         )
       );
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       let actionMessage = "";
@@ -186,64 +174,54 @@ const Analytics = () => {
       let updatedCategoryData = [...(categoryData || [])];
       
       if (recommendation.category === "Marketing") {
-        // Simulate marketing campaign effect - increase sales of electronics
         actionMessage = "Marketing campaign initiated for Electronics";
         
-        // Update sales data to reflect the marketing campaign
         updatedSalesData = updatedSalesData.map(item => {
           if (item.date === updatedSalesData[updatedSalesData.length - 1].date) {
-            return { ...item, value: item.value * 1.15 }; // 15% increase in latest month
+            return { ...item, value: item.value * 1.15 };
           }
           return item;
         });
         
-        // Update category data to reflect the marketing campaign
         updatedCategoryData = updatedCategoryData.map(item => {
           if (item.name === "Electronics") {
-            return { ...item, value: item.value * 1.15 }; // 15% increase for Electronics
+            return { ...item, value: item.value * 1.15 };
           }
           return item;
         });
         
       } else if (recommendation.category === "Inventory") {
-        // Simulate inventory restock effect
         actionMessage = "Restock order placed for Smartphones";
         
-        // Inventory restocking doesn't directly affect sales charts immediately
         toast({
           title: "Inventory Update",
           description: "Smartphone inventory restock has been ordered. Shipment will arrive in 3-5 business days.",
         });
         
       } else if (recommendation.category === "Pricing") {
-        // Simulate price optimization effect - increase sales volume for accessories
         actionMessage = "Price optimization implemented for Accessories";
         
-        // Update category data to reflect the price optimization
         updatedCategoryData = updatedCategoryData.map(item => {
           if (item.name === "Accessories") {
-            return { ...item, value: item.value * 1.2 }; // 20% increase for Accessories
+            return { ...item, value: item.value * 1.2 };
           }
           return item;
         });
         
-        // Small boost in overall sales
         updatedSalesData = updatedSalesData.map(item => {
           if (item.date === updatedSalesData[updatedSalesData.length - 1].date) {
-            return { ...item, value: item.value * 1.05 }; // 5% increase in latest month
+            return { ...item, value: item.value * 1.05 };
           }
           return item;
         });
       }
       
-      // Update recommendation status
       setRecommendations(prev => 
         prev.map(rec => 
           rec.id === id ? { ...rec, status: "completed" } : rec
         )
       );
       
-      // Update chart data to reflect the changes
       setSalesData(updatedSalesData);
       setCategoryData(updatedCategoryData);
       
@@ -275,20 +253,17 @@ const Analytics = () => {
     });
   }
 
-  // Calculate total sales from the dataset
   const totalSales = contextSalesData && contextSalesData.length > 0
     ? contextSalesData.reduce((sum, sale) => sum + Number(sale.amount || sale.value || 0), 0)
     : analyticsData?.totalSales || 0;
 
-  // Calculate customers count
   const customersCount = customersData && customersData.length > 0
     ? customersData.length
-    : 120; // Default fallback
-  
-  // Calculate orders count based on sales data
+    : 120;
+
   const ordersCount = contextSalesData && contextSalesData.length > 0
     ? contextSalesData.length
-    : 450; // Default fallback
+    : 450;
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
