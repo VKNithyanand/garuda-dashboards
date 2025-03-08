@@ -117,6 +117,13 @@ export const CompetitorBenchmarking: React.FC<CompetitorBenchmarkingProps> = ({
     }));
   };
   
+  // Function to get fill color based on the entry name
+  const getBarFill = (entry: any) => {
+    if (entry.name === "Your Business") return "#3b82f6";
+    if (entry.name === "Industry Average") return "#6b7280";
+    return "#10b981";
+  };
+  
   if (error) {
     return (
       <Alert variant="destructive">
@@ -203,12 +210,15 @@ export const CompetitorBenchmarking: React.FC<CompetitorBenchmarkingProps> = ({
                         <Tooltip />
                         <Bar 
                           dataKey="value" 
-                          fill={(entry) => entry.name === "Your Business" 
-                            ? "#3b82f6" 
-                            : entry.name === "Industry Average" 
-                              ? "#6b7280" 
-                              : "#10b981"
-                          }
+                          fill="#10b981"
+                          // The fix: use a custom function for colors through the style prop instead
+                          style={(entry) => ({ 
+                            fill: entry.name === "Your Business" 
+                              ? "#3b82f6" 
+                              : entry.name === "Industry Average" 
+                                ? "#6b7280" 
+                                : "#10b981"
+                          })}
                         />
                       </BarChart>
                     </ResponsiveContainer>
