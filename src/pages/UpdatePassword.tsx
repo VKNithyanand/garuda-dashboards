@@ -1,112 +1,154 @@
 
-import React, { useState } from "react";
-import { useUpdatePassword } from "@/lib/supabase-auth";
-import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const UpdatePassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const { updatePassword, loading } = useUpdatePassword();
-  const [error, setError] = useState("");
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+      } else {
+        toast({
+          title: "Session expired",
+          description: "Your password reset link has expired. Please request a new one.",
+          variant: "destructive",
+        });
+        navigate("/reset-password");
+      }
+    };
+
+    checkSession();
+  }, [navigate, toast]);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
     
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match",
+        variant: "destructive",
+      });
       return;
     }
     
-    await updatePassword(password);
+    if (password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated",
+      });
+      
+      navigate("/auth");
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "An error occurred during password update",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md space-y-8 rounded-lg border border-border p-6 shadow-sm">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Set new password</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Please create a new secure password for your account
-          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Update your password</h2>
+          <p className="text-muted-foreground mt-2">Create a new secure password</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              New Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="••••••••"
-                disabled={loading}
-              />
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-muted-foreground"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="text-sm font-medium">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                type={showPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="••••••••"
-                disabled={loading}
-              />
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Updating password...
+        <Card>
+          <CardHeader>
+            <CardTitle>Set new password</CardTitle>
+            <CardDescription>Enter your new password below</CardDescription>
+          </CardHeader>
+          <form onSubmit={handleUpdatePassword}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  New Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
               </div>
-            ) : (
-              "Update password"
-            )}
-          </button>
-        </form>
+
+              <div className="space-y-2">
+                <label htmlFor="confirm-password" className="text-sm font-medium">
+                  Confirm New Password
+                </label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
+                  </>
+                ) : (
+                  "Update password"
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
       </div>
     </div>
   );

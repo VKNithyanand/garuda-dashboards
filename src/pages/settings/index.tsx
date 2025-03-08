@@ -4,6 +4,8 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { useUserSettings } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import NotificationsTab from "./NotificationsTab";
 import IntegrationsTab from "./IntegrationsTab";
 import ProfileTab from "./ProfileTab";
@@ -13,28 +15,56 @@ import SettingsSidebar from "./SettingsSidebar";
 const Settings = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     pushNotifications: false,
     marketingEmails: false,
   });
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Get the current user
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        setUserEmail(user.email);
+      setIsLoading(true);
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access settings.",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
       }
+      
+      setUserId(user.id);
+      setUserEmail(user.email);
+      setIsLoading(false);
     };
     
     getUser();
-  }, []);
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        navigate("/auth");
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        setUserId(session.user.id);
+        setUserEmail(session.user.email);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, toast]);
   
   // Get user settings
-  const { data: userSettings, isLoading, refetch } = useUserSettings(userId);
+  const { data: userSettings, isLoading: settingsLoading, refetch } = useUserSettings(userId);
   
   // Update local state when settings are loaded
   useEffect(() => {
@@ -46,6 +76,16 @@ const Settings = () => {
       });
     }
   }, [userSettings]);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -74,7 +114,7 @@ const Settings = () => {
             )}
             
             {activeSettingsTab === "notifications" && (
-              isLoading ? (
+              settingsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>

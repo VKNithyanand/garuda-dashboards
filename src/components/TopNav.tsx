@@ -1,276 +1,107 @@
+import {
+  BrainCircuit,
+  Menu,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserNav } from "@/components/UserNav";
+import { useMobileMenu } from "@/hooks/use-mobile-menu";
 
-import React, { useState, useEffect } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Menu, Sun, Moon, X } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+import { LogOut, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
 
-interface TopNavProps {
-  setSidebarOpen: (open: boolean) => void;
-  sidebarOpen: boolean;
-}
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-export const TopNav = ({ setSidebarOpen, sidebarOpen }: TopNavProps) => {
+export function TopNav() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [theme, setTheme] = useState("light");
-  const [userId, setUserId] = useState<string | undefined>(undefined);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    { id: '1', title: 'New Sale', message: 'A new sale of $1,200 was recorded.', time: '10 minutes ago', read: false },
-    { id: '2', title: 'New Customer', message: 'John Smith just signed up.', time: '1 hour ago', read: false },
-    { id: '3', title: 'Report Generated', message: 'Your monthly report is ready.', time: '2 hours ago', read: false },
-    { id: '4', title: 'System Update', message: 'System will be updated tonight.', time: '1 day ago', read: true },
-  ]);
-
-  // Get unread notifications count
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  // Get the current user
+  
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      }
+      setUser(user);
+      setLoading(false);
     };
     
     getUser();
-  }, []);
-
-  // Get user settings
-  const { data: userSettings } = useQuery({
-    queryKey: ["userSettings", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!userId,
-  });
-
-  // Update local theme when settings are loaded
-  useEffect(() => {
-    if (userSettings?.theme) {
-      setTheme(userSettings.theme);
-      document.documentElement.classList.toggle('dark', userSettings.theme === 'dark');
-    }
-  }, [userSettings]);
-
-  const toggleTheme = async () => {
-    const newTheme = theme === "light" ? "dark" : "light";
     
-    // Update theme in the state
-    setTheme(newTheme);
-    
-    // Apply theme to the document
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    
-    // Save theme to database if user is logged in
-    if (userId) {
-      try {
-        const { error } = await supabase
-          .from('user_settings')
-          .upsert({ 
-            user_id: userId, 
-            theme: newTheme 
-          }, { 
-            onConflict: 'user_id' 
-          });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Theme Updated",
-          description: `Theme changed to ${newTheme === "dark" ? "Dark" : "Light"} mode`,
-        });
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update theme",
-          variant: "destructive",
-        });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
       }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+  
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      navigate("/auth");
+    } catch (error: any) {
+      toast({
+        title: "Logout failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
-
-    toast({
-      title: "Notification read",
-      description: "The notification has been marked as read.",
-    });
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-
-    toast({
-      title: "All notifications read",
-      description: "All notifications have been marked as read.",
-    });
-  };
-
-  const clearNotifications = () => {
-    setNotifications([]);
-    
-    toast({
-      title: "Notifications cleared",
-      description: "All notifications have been cleared.",
-    });
-  };
+  const { isMenuOpen, toggleMobileMenu } = useMobileMenu();
 
   return (
-    <header className="sticky top-0 z-30 h-14 border-b bg-background flex items-center px-4 md:px-6">
-      <button
-        className="mr-4 md:hidden"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-      
-      <div className="w-full flex items-center justify-between">
-        <div className="relative w-full max-w-md hidden md:flex">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="search"
-            placeholder="Search..."
-            className="w-full bg-background border border-input pl-8 py-2 text-sm rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          >
-            {theme === "light" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </Button>
+    <div className="top-nav-container border-b bg-background">
+      <header className="top-nav">
+        <div className="flex items-center gap-2 md:gap-4">
+          <button className="lg:hidden" onClick={toggleMobileMenu}>
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle menu</span>
+          </button>
           
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <Badge 
-                    className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-red-500"
-                    variant="destructive"
-                  >
-                    {unreadCount}
-                  </Badge>
-                )}
+          <Link to="/" className="flex items-center gap-2">
+            <BrainCircuit className="h-6 w-6" />
+            <span className="font-semibold hidden md:inline-block">DataDash</span>
+          </Link>
+          
+          <nav className="hidden md:flex gap-6">
+            <Link to="/" className="text-sm font-medium hover:underline">Dashboard</Link>
+            <Link to="/analytics" className="text-sm font-medium hover:underline">Analytics</Link>
+            <Link to="/insights" className="text-sm font-medium hover:underline">Insights</Link>
+            <Link to="/reports" className="text-sm font-medium hover:underline">Reports</Link>
+            <Link to="/users" className="text-sm font-medium hover:underline">Users</Link>
+            <Link to="/settings" className="text-sm font-medium hover:underline">Settings</Link>
+          </nav>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <UserNav />
+          <ThemeToggle />
+          
+          {!loading && (
+            user ? (
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" /> Logout
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h4 className="font-medium">Notifications</h4>
-                <div className="flex gap-1">
-                  {notifications.length > 0 && (
-                    <>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={markAllAsRead}
-                        disabled={unreadCount === 0}
-                      >
-                        Mark all read
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={clearNotifications}
-                      >
-                        Clear all
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                  <Bell className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium">No notifications</p>
-                  <p className="text-xs text-muted-foreground">
-                    You're all caught up!
-                  </p>
-                </div>
-              ) : (
-                <div className="max-h-[400px] overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className={`flex items-start p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors ${
-                        !notification.read ? 'bg-muted/20' : ''
-                      }`}
-                    >
-                      <div className="flex-1 mr-4">
-                        <p className="text-sm font-medium">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {notification.time}
-                        </p>
-                      </div>
-                      <div className="flex flex-shrink-0">
-                        {!notification.read && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 w-6 p-0" 
-                            onClick={() => markAsRead(notification.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-          
-          <Avatar>
-            <AvatarImage src="/placeholder.svg" />
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
+                <LogIn className="h-4 w-4 mr-2" /> Login
+              </Button>
+            )
+          )}
         </div>
-      </div>
-    </header>
+      </header>
+    </div>
   );
-};
+}
