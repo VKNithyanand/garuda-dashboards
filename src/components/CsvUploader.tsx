@@ -18,6 +18,7 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -56,6 +57,7 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
 
     setFile(file);
     setIsLoading(true);
+    setError(null);
 
     try {
       const text = await file.text();
@@ -65,10 +67,11 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
         throw new Error("No data found in CSV file");
       }
 
-      // Save to appropriate table in Supabase
-      await saveToSupabase(data);
-
-      onDataLoaded(data);
+      // Process and save to Supabase
+      const processedData = await saveToSupabase(data);
+      
+      // Update parent component with the processed data
+      onDataLoaded(processedData);
       
       toast({
         title: "CSV File Uploaded",
@@ -76,6 +79,7 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
       });
     } catch (error: any) {
       console.error("Error processing CSV:", error);
+      setError(error.message || "Failed to process CSV file");
       toast({
         title: "Error Processing File",
         description: error.message || "Failed to process CSV file.",
@@ -117,7 +121,7 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
     return result;
   };
 
-  const saveToSupabase = async (data: any[]) => {
+  const saveToSupabase = async (data: any[]): Promise<any[]> => {
     try {
       // Use type directly as the table name since it's already properly typed
       const table: ValidTableName = type;
@@ -157,12 +161,23 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
       }
 
       if (processedData.length > 0) {
-        const { error } = await supabase
+        console.log(`Inserting ${processedData.length} records into ${table}:`, processedData);
+        
+        const { data: insertedData, error } = await supabase
           .from(table)
-          .insert(processedData);
+          .insert(processedData)
+          .select();
           
-        if (error) throw error;
+        if (error) {
+          console.error(`Error from Supabase: ${error.code} - ${error.message}`, error.details);
+          throw new Error(`Database error: ${error.message}`);
+        }
+        
+        console.log(`Successfully inserted data:`, insertedData);
+        return processedData;
       }
+      
+      return processedData;
     } catch (error) {
       console.error(`Error saving to ${type} table:`, error);
       throw new Error(`Failed to save data to database: ${(error as Error).message}`);
@@ -171,6 +186,7 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
 
   const clearFile = () => {
     setFile(null);
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -222,6 +238,8 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
             <div className="flex items-center gap-2">
               {isLoading ? (
                 <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+              ) : error ? (
+                <AlertTriangle className="h-5 w-5 text-destructive" />
               ) : (
                 <Check className="h-5 w-5 text-green-500" />
               )}
@@ -235,6 +253,9 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
               </Button>
             </div>
           </div>
+          {error && (
+            <p className="text-xs text-destructive mt-2">{error}</p>
+          )}
         </div>
       )}
     </div>
