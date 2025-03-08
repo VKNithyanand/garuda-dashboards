@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { processNLPQuery } from "@/lib/api";
-import { Brain, Loader2, UploadCloud } from "lucide-react";
+import { Brain, Loader2, UploadCloud, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { QuerySuggestions } from "./QuerySuggestions";
 import { QueryHistory } from "./QueryHistory";
@@ -79,12 +79,38 @@ export const QueryInput = () => {
     handleSubmit(fakeEvent);
   };
 
+  const clearResults = () => {
+    setResult(null);
+    setQuery("");
+  };
+
+  const handleClearHistory = () => {
+    setQueryHistory([]);
+    toast({
+      title: "History Cleared",
+      description: "Your query history has been cleared.",
+    });
+  };
+
   return (
     <div className="dashboard-card">
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4" />
-          <h3 className="font-medium">AI Query Assistant</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <h3 className="font-medium">AI Query Assistant</h3>
+          </div>
+          {queryHistory.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleClearHistory}
+              className="text-xs"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Clear History
+            </Button>
+          )}
         </div>
         
         {!hasUploadedData ? (
@@ -135,6 +161,7 @@ export const QueryInput = () => {
                 result={result} 
                 expanded={expanded}
                 setExpanded={setExpanded}
+                clearResults={clearResults}
               />
             )}
 

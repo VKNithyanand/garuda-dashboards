@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import NotificationsTab from "./NotificationsTab";
 import IntegrationsTab from "./IntegrationsTab";
+import ProfileTab from "./ProfileTab";
 import SettingsSidebar from "./SettingsSidebar";
 
 const Settings = () => {
@@ -16,7 +17,7 @@ const Settings = () => {
     pushNotifications: false,
     marketingEmails: false,
   });
-  const [activeSettingsTab, setActiveSettingsTab] = useState("notifications");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   
   // Get the current user
   useEffect(() => {
@@ -68,6 +69,13 @@ const Settings = () => {
           />
 
           <div className="dashboard-card md:col-span-5">
+            {activeSettingsTab === "profile" && (
+              <ProfileTab 
+                userId={userId}
+                userEmail={userEmail}
+              />
+            )}
+            
             {activeSettingsTab === "notifications" && (
               isLoading ? (
                 <div className="flex items-center justify-center py-12">
