@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useInsights } from "@/lib/supabase-client";
@@ -19,10 +18,19 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface Insight {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  created_at: string;
+}
+
 const Insights = () => {
   const { toast } = useToast();
   const { data: insightsData = [], isLoading, error, refetch } = useInsights();
-  const [selectedInsight, setSelectedInsight] = useState<any>(null);
+  const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
   const [showInsightDetail, setShowInsightDetail] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
@@ -41,8 +49,7 @@ const Insights = () => {
     });
   }
 
-  // Apply filters and search
-  const filteredInsights = insightsData.filter(insight => {
+  const filteredInsights = insightsData.filter((insight: Insight) => {
     const matchesSearch = searchTerm === "" || 
       insight.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insight.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,27 +63,19 @@ const Insights = () => {
     return matchesSearch && matchesCategory && matchesPriority;
   });
 
-  // Get unique categories and priorities
-  const categories = ["all", ...Array.from(new Set(insightsData.map(insight => insight.category)))];
-  const priorities = ["all", ...Array.from(new Set(insightsData.map(insight => insight.priority)))];
+  const categories = ["all", ...Array.from(new Set(insightsData.map((insight: Insight) => insight.category)))];
+  const priorities = ["all", ...Array.from(new Set(insightsData.map((insight: Insight) => insight.priority)))];
 
-  // Handle implementing an insight
   const implementInsight = async (insightId: string) => {
     setIsImplementing(true);
     try {
-      // In a real app, we would call an API to perform the action
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mark insight as implemented in the database
-      // This would be in a real app:
-      // await supabase.from('insights').update({ implemented: true }).eq('id', insightId);
       
       toast({
         title: "Insight Implemented",
         description: "The recommended action has been successfully implemented.",
       });
       
-      // Refresh insights data
       refetch();
     } catch (error: any) {
       toast({
@@ -89,7 +88,6 @@ const Insights = () => {
     }
   };
 
-  // Handle bookmarking an insight
   const toggleBookmark = (insightId: string) => {
     if (bookmarkedInsights.includes(insightId)) {
       setBookmarkedInsights(bookmarkedInsights.filter(id => id !== insightId));
@@ -106,9 +104,7 @@ const Insights = () => {
     }
   };
 
-  // Handle sharing an insight
-  const shareInsight = (insight: any) => {
-    // In a real app, this would open a share dialog
+  const shareInsight = (insight: Insight) => {
     navigator.clipboard.writeText(`${insight.title}: ${insight.description}`);
     toast({
       title: "Insight Copied to Clipboard",
@@ -116,7 +112,6 @@ const Insights = () => {
     });
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setFilters({
       category: "all",
@@ -175,7 +170,6 @@ const Insights = () => {
           </div>
         </div>
 
-        {/* Search and Filters */}
         <div className="dashboard-card">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -417,9 +411,9 @@ const Insights = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {filteredInsights.map((insight, index) => (
+                      {filteredInsights.map((insight: Insight) => (
                         <div
-                          key={insight.id || index}
+                          key={insight.id}
                           className="p-4 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
                           onClick={() => {
                             setSelectedInsight(insight);
@@ -463,7 +457,7 @@ const Insights = () => {
                     <h3 className="font-medium mb-4">Action Items</h3>
                     <div className="space-y-4">
                       {filteredInsights.length > 0 
-                        ? filteredInsights.slice(0, 3).map((insight, i) => (
+                        ? filteredInsights.slice(0, 3).map((insight: Insight, i: number) => (
                             <div
                               key={i}
                               className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"

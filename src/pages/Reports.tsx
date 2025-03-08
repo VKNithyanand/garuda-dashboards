@@ -30,6 +30,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface Report {
+  id: number;
+  name: string;
+  date: string;
+  format: string;
+}
+
 const Reports = () => {
   const { toast } = useToast();
   const { data: categoryData = [], isLoading, error } = useSalesByCategory();
@@ -46,13 +53,12 @@ const Reports = () => {
     maxAmount: "",
   });
   const [filteredChartData, setFilteredChartData] = useState<any[]>([]);
-  const [recentReports, setRecentReports] = useState([
+  const [recentReports, setRecentReports] = useState<Report[]>([
     { id: 1, name: "Q1 Sales Report", date: "1 day ago", format: "PDF" },
     { id: 2, name: "Q2 Sales Report", date: "2 days ago", format: "Excel" },
     { id: 3, name: "Q3 Sales Report", date: "3 days ago", format: "CSV" },
   ]);
   
-  // Generate unique categories from sales data
   const categories = ["all", ...new Set(salesData.map(sale => sale.category))];
   
   useEffect(() => {
@@ -64,12 +70,10 @@ const Reports = () => {
   const applyFilters = () => {
     let filtered = [...categoryData];
     
-    // Apply category filter
     if (filters.category !== "all") {
       filtered = filtered.filter(item => item.name === filters.category);
     }
     
-    // Apply amount range filters
     if (filters.minAmount) {
       filtered = filtered.filter(item => item.value >= Number(filters.minAmount));
     }
@@ -92,12 +96,10 @@ const Reports = () => {
   const generateReport = async () => {
     setIsGenerating(true);
     try {
-      // Call the analytics function
       const { data, error } = await supabase.functions.invoke('get-analytics');
       
       if (error) throw error;
       
-      // Add new report to the list
       const newReport = {
         id: Date.now(),
         name: `Sales Report ${new Date().toLocaleDateString()}`,
@@ -129,30 +131,25 @@ const Reports = () => {
     
     setIsDownloading(true);
     
-    // Create dummy data for the report
     let reportData: string;
     
     if (report.format === "CSV") {
-      // Create CSV content
       reportData = "Category,Value\n";
       categoryData.forEach(item => {
         reportData += `${item.name},${item.value}\n`;
       });
     } else if (report.format === "Excel") {
-      // For simplicity, we'll still use CSV for Excel, in a real app you'd use a library
       reportData = "Category,Value\n";
       categoryData.forEach(item => {
         reportData += `${item.name},${item.value}\n`;
       });
     } else {
-      // For PDF, we'll just create a text representation
       reportData = "SALES REPORT\n\n";
       categoryData.forEach(item => {
         reportData += `${item.name}: ${item.value}\n`;
       });
     }
     
-    // Create a blob and download it
     const blob = new Blob([reportData], { 
       type: report.format === "PDF" 
         ? "application/pdf" 
@@ -181,30 +178,25 @@ const Reports = () => {
   const handleExport = () => {
     setIsDownloading(true);
     
-    // Create dummy data for the export
     let exportData: string;
     
     if (selectedFormat === "CSV") {
-      // Create CSV content
       exportData = "Category,Value\n";
       (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
         exportData += `${item.name},${item.value}\n`;
       });
     } else if (selectedFormat === "Excel") {
-      // For simplicity, we'll still use CSV for Excel, in a real app you'd use a library
       exportData = "Category,Value\n";
       (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
         exportData += `${item.name},${item.value}\n`;
       });
     } else {
-      // For PDF, we'll just create a text representation
       exportData = "SALES REPORT\n\n";
       (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
         exportData += `${item.name}: ${item.value}\n`;
       });
     }
     
-    // Create a blob and download it
     const blob = new Blob([exportData], { 
       type: selectedFormat === "PDF" 
         ? "application/pdf" 

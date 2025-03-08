@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
@@ -28,11 +27,19 @@ import {
 } from "recharts";
 import { Avatar } from "@/components/ui/avatar";
 
+interface SaleWithCustomer {
+  id: string;
+  name: string;
+  email: string;
+  amount: string;
+  date: string;
+}
+
 const Index = () => {
   const { toast } = useToast();
   const { data: salesData = [], isLoading: isSalesLoading, error: salesError } = useSalesData();
   const { data: customers = [], isLoading: isCustomersLoading } = useCustomers();
-  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [recentSales, setRecentSales] = useState<SaleWithCustomer[]>([]);
   
   // Process sales data for the chart
   const processedSalesData = salesData.slice(0, 7).map(sale => ({

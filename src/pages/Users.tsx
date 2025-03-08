@@ -23,6 +23,33 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  last_active?: string;
+}
+
+interface UserItem extends Customer {
+  role: string;
+  status: string;
+  lastActive: string;
+  department: string;
+  location: string;
+  phone: string;
+  bio: string;
+}
+
+interface UserDetailForm {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  department: string;
+  location: string;
+  bio: string;
+}
+
 const Users = () => {
   const { toast } = useToast();
   const { data: customers = [], isLoading, error, refetch } = useCustomers();
@@ -40,7 +67,7 @@ const Users = () => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showUserDetail, setShowUserDetail] = useState<string | null>(null);
-  const [userDetail, setUserDetail] = useState({
+  const [userDetail, setUserDetail] = useState<UserDetailForm>({
     name: "",
     email: "",
     phone: "",
@@ -50,7 +77,7 @@ const Users = () => {
     bio: ""
   });
   
-  const users = customers.map(customer => ({
+  const users: UserItem[] = customers.map(customer => ({
     id: customer.id,
     name: customer.name,
     email: customer.email,
