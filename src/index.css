@@ -5,7 +5,7 @@
  
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -14,31 +14,46 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 260 70% 55%;
     --primary-foreground: 210 40% 98%;
  
-    --secondary: 210 40% 96.1%;
+    --secondary: 180 70% 45%;
     --secondary-foreground: 222.2 47.4% 11.2%;
  
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
  
-    --accent: 210 40% 96.1%;
+    --accent: 39 100% 70%;
     --accent-foreground: 222.2 47.4% 11.2%;
  
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+
+    --info: 221 83% 53%;
+    --info-foreground: 210 40% 98%;
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 260 70% 55%;
  
     --radius: 0.75rem;
 
-    --dashboard-card: 220 14% 96%;
-    --dashboard-hover: 220 14% 94%;
-    --dashboard-muted: 220 14% 90%;
-    --dashboard-accent: 220 14% 85%;
+    --dashboard-card: 220 40% 98%;
+    --dashboard-hover: 220 40% 96%;
+    --dashboard-muted: 220 40% 92%;
+    --dashboard-accent: 220 40% 85%;
+
+    --brand-purple: 260 70% 55%;
+    --brand-blue: 221 83% 53%;
+    --brand-green: 142 76% 36%;
+    --brand-orange: 39 100% 70%;
+    --brand-pink: 336 80% 65%;
   }
   
   .dark {
@@ -51,29 +66,44 @@
     --popover: 222.2 84% 6.9%;
     --popover-foreground: 210 40% 98%;
     
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 260 60% 60%;
+    --primary-foreground: 210 40% 98%;
     
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 180 60% 40%;
     --secondary-foreground: 210 40% 98%;
     
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
     
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 39 90% 65%;
     --accent-foreground: 210 40% 98%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     
+    --success: 142 70% 30%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+
+    --info: 221 83% 53%;
+    --info-foreground: 210 40% 98%;
+    
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 260 60% 60%;
     
     --dashboard-card: 222.2 47.4% 12.2%;
     --dashboard-hover: 222.2 47.4% 14.2%;
     --dashboard-muted: 222.2 47.4% 16.2%;
     --dashboard-accent: 222.2 47.4% 18.2%;
+
+    --brand-purple: 260 70% 65%;
+    --brand-blue: 221 83% 63%;
+    --brand-green: 142 76% 46%;
+    --brand-orange: 39 100% 70%;
+    --brand-pink: 336 80% 75%;
   }
 }
 
@@ -88,6 +118,14 @@
 
 @layer utilities {
   .dashboard-card {
-    @apply bg-dashboard-card rounded-lg p-6 transition-all duration-200 hover:bg-dashboard-hover;
+    @apply bg-dashboard-card rounded-lg p-6 transition-all duration-200 hover:bg-dashboard-hover shadow-sm hover:shadow;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-sm bg-white/70 dark:bg-black/30;
   }
 }

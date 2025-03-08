@@ -12,6 +12,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   
   return (
     <div className="min-h-screen bg-background">
+      <div className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-purple via-brand-blue to-brand-green z-[100]"></div>
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <div className={`transition-all duration-300 ${sidebarOpen ? "pl-64" : "pl-0 md:pl-64"}`}>
         <TopNav setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
