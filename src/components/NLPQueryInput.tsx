@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { processNLPQuery } from "@/lib/api";
-import { Brain, Loader2, ChevronDown, ChevronUp, BarChart, LineChart, Users, LightbulbIcon } from "lucide-react";
+import { Brain, Loader2, ChevronDown, ChevronUp, BarChart, LineChart, Users, LightbulbIcon, TrendingUp, Target, PercentIcon } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export const NLPQueryInput = () => {
@@ -9,6 +9,14 @@ export const NLPQueryInput = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [expanded, setExpanded] = useState(true);
+  const [queryHistory, setQueryHistory] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState([
+    "Show revenue trends by quarter",
+    "Identify top-performing marketing channels",
+    "Analyze customer engagement metrics",
+    "Compare campaign conversion rates",
+    "Find growth opportunities in current market"
+  ]);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,11 +29,21 @@ export const NLPQueryInput = () => {
       setResult(response);
       setExpanded(true);
       
+      // Add to query history if not already present
+      if (!queryHistory.includes(query)) {
+        setQueryHistory(prev => [query, ...prev].slice(0, 5));
+      }
+      
       if (response.type === "unknown") {
         toast({
           title: "Query Not Understood",
           description: response.message,
           variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Analysis Complete",
+          description: `Found insights related to ${response.type}`,
         });
       }
     } catch (error: any) {
@@ -39,6 +57,13 @@ export const NLPQueryInput = () => {
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuery(suggestion);
+    // Auto-submit the suggestion
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    handleSubmit(fakeEvent);
+  };
+
   const renderIcon = (type: string) => {
     switch(type) {
       case 'sales':
@@ -49,6 +74,12 @@ export const NLPQueryInput = () => {
         return <Users className="h-4 w-4" />;
       case 'insights':
         return <LightbulbIcon className="h-4 w-4" />;
+      case 'marketing':
+        return <Target className="h-4 w-4" />;
+      case 'performance':
+        return <PercentIcon className="h-4 w-4" />;
+      case 'growth':
+        return <TrendingUp className="h-4 w-4" />;
       default:
         return <Brain className="h-4 w-4" />;
     }
@@ -84,7 +115,7 @@ export const NLPQueryInput = () => {
               </div>
             )}
             
-            {(result.type === "sales" || result.type === "trend") && (
+            {(result.type === "sales" || result.type === "trend" || result.type === "marketing" || result.type === "performance") && (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -134,7 +165,7 @@ export const NLPQueryInput = () => {
               </div>
             )}
             
-            {result.type === "insights" && (
+            {(result.type === "insights" || result.type === "growth") && (
               <div className="space-y-3">
                 {result.data.map((insight: any, index: number) => (
                   <div key={index} className="p-3 bg-background rounded-md">
@@ -155,6 +186,11 @@ export const NLPQueryInput = () => {
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full mt-2 inline-block">
                         {insight.category}
                       </span>
+                    )}
+                    {insight.action && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        Recommended action: {insight.action}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -197,6 +233,21 @@ export const NLPQueryInput = () => {
           </div>
         </form>
 
+        {/* Quick suggestions */}
+        {!isLoading && !result && (
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="text-xs bg-primary/5 hover:bg-primary/10 text-primary px-2 py-1 rounded-full"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center p-6">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -205,9 +256,31 @@ export const NLPQueryInput = () => {
           renderResult()
         )}
 
+        {/* Query history */}
+        {queryHistory.length > 0 && !isLoading && (
+          <div className="pt-2">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Recent Queries</h4>
+            <div className="space-y-1">
+              {queryHistory.map((historyItem, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setQuery(historyItem);
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                    handleSubmit(fakeEvent);
+                  }}
+                  className="text-xs w-full text-left truncate hover:bg-primary/5 p-1 rounded"
+                >
+                  {historyItem}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground">
-            Try queries like: "Show recent sales", "Customer growth trend", "High priority insights"
+            Try queries like: "Show marketing campaign performance", "Identify growth opportunities", "Customer retention trends"
           </p>
         </div>
       </div>
