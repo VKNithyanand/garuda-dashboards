@@ -12,6 +12,82 @@ interface VoiceAssistantProps {
   onQuerySubmit?: (query: string) => void;
 }
 
+// Define response type interfaces for proper type checking
+interface BaseSummaryData {
+  type: string;
+  summary?: string;
+}
+
+interface SummaryResponseData extends BaseSummaryData {
+  type: "summary";
+  data: {
+    total: string;
+    count: number;
+    currency: string;
+    metric: string;
+  };
+}
+
+interface SalesResponseData extends BaseSummaryData {
+  type: "sales";
+  data: Array<{
+    date: string;
+    amount: number;
+    product?: string;
+    category?: string;
+  }>;
+}
+
+interface TrendResponseData extends BaseSummaryData {
+  type: "trend";
+  data: Array<{
+    period: string;
+    value: number;
+  }>;
+}
+
+interface CustomersResponseData extends BaseSummaryData {
+  type: "customers";
+  data: Array<{
+    name: string;
+    email: string;
+    joined?: string;
+    lastActive?: string;
+  }>;
+}
+
+interface InsightsResponseData extends BaseSummaryData {
+  type: "insights" | "growth";
+  data: Array<{
+    title: string;
+    description: string;
+    category?: string;
+    priority?: string;
+    action?: string;
+  }>;
+}
+
+interface StoryResponseData extends BaseSummaryData {
+  type: "story";
+  data: {
+    title: string;
+    summary: string;
+    highlights: Array<{title: string; content: string}>;
+    insights: Array<{title: string; content: string}>;
+    recommendations: Array<{title: string; content: string}>;
+    conclusion: string;
+  };
+}
+
+interface ErrorResponseData extends BaseSummaryData {
+  type: "error" | "unknown";
+  message: string;
+}
+
+type NLPResponseData = SummaryResponseData | SalesResponseData | TrendResponseData | 
+                       CustomersResponseData | InsightsResponseData | StoryResponseData | 
+                       ErrorResponseData;
+
 export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onQuerySubmit }) => {
   const { toast } = useToast();
   const { hasUploadedData } = useData();
@@ -89,7 +165,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onQuerySubmit })
       }
       
       // Process the query
-      const response = await processNLPQuery(command);
+      const response = await processNLPQuery(command) as NLPResponseData;
       
       // Pass the query to the parent component if provided
       if (onQuerySubmit) {
@@ -112,7 +188,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onQuerySubmit })
           case "sales":
             spokenResponse = `I found ${response.data.length} sales records. `;
             if (response.data.length > 0) {
-              const total = response.data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+              const total = response.data.reduce((sum, item) => sum + (item.amount || 0), 0);
               spokenResponse += `The total amount is $${total.toFixed(2)}.`;
             }
             break;
@@ -127,7 +203,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onQuerySubmit })
             spokenResponse = response.summary || "I've identified some key insights from your data.";
             if (response.data.length > 0) {
               spokenResponse += " Here are the top insights: ";
-              response.data.slice(0, 3).forEach((insight: any, index: number) => {
+              response.data.slice(0, 3).forEach((insight, index) => {
                 spokenResponse += `${index + 1}: ${insight.title}. ${insight.description} `;
               });
             }
