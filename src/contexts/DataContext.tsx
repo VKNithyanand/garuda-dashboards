@@ -11,6 +11,8 @@ type DataContextType = {
   setInsightsData: (data: any[]) => void;
   setCategoryData: (data: any[]) => void;
   hasUploadedData: boolean;
+  dataSource: string;
+  setDataSource: (source: string) => void;
 };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [customersData, setCustomersData] = useState<any[]>([]);
   const [insightsData, setInsightsData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('upload');
 
   // Determine if any data has been uploaded
   const hasUploadedData = salesData.length > 0 || customersData.length > 0 || insightsData.length > 0;
@@ -35,7 +38,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setCustomersData,
         setInsightsData,
         setCategoryData,
-        hasUploadedData
+        hasUploadedData,
+        dataSource,
+        setDataSource
       }}
     >
       {children}

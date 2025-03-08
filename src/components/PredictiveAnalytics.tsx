@@ -3,30 +3,29 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { TrendingUp, Lightbulb, AlertTriangle, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { TrendingUp, Lightbulb, AlertTriangle, ArrowUp, ArrowDown, Loader2, Brain, UploadCloud } from "lucide-react";
+import { useData } from "@/contexts/DataContext";
+import { Button } from "@/components/ui/button";
 
 export const PredictiveAnalytics: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [salesData, setSalesData] = useState<any[]>([]);
   const [predictions, setPredictions] = useState<any[]>([]);
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<"7days" | "30days" | "90days">("30days");
   const { toast } = useToast();
+  const { salesData, hasUploadedData } = useData();
 
-  const fetchData = async () => {
+  const processData = () => {
+    if (salesData.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Get sales data
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .order('transaction_date', { ascending: true });
-      
-      if (error) throw error;
-      
       // Process the data by date
       const groupedByDate: Record<string, number> = {};
       
-      data.forEach((sale) => {
+      salesData.forEach((sale) => {
         const date = new Date(sale.transaction_date);
         const dateStr = date.toISOString().split('T')[0];
         
@@ -43,14 +42,12 @@ export const PredictiveAnalytics: React.FC = () => {
         value: groupedByDate[date]
       }));
       
-      setSalesData(chartData);
-      
       // Generate prediction data
       generatePredictions(chartData);
     } catch (error: any) {
-      console.error("Error fetching data:", error);
+      console.error("Error processing data:", error);
       toast({
-        title: "Error fetching data",
+        title: "Error processing data",
         description: error.message,
         variant: "destructive"
       });
@@ -97,8 +94,8 @@ export const PredictiveAnalytics: React.FC = () => {
   };
   
   useEffect(() => {
-    fetchData();
-  }, []);
+    processData();
+  }, [salesData]);
   
   // Prepare data for the chart
   const prepareChartData = () => {
@@ -106,15 +103,34 @@ export const PredictiveAnalytics: React.FC = () => {
     const days = selectedTimeFrame === "7days" ? 7 : 
                  selectedTimeFrame === "30days" ? 30 : 90;
     
+    if (salesData.length === 0) return [];
+    
+    // Process the data by date
+    const groupedByDate: Record<string, number> = {};
+    
+    salesData.forEach((sale) => {
+      const date = new Date(sale.transaction_date);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      if (!groupedByDate[dateStr]) {
+        groupedByDate[dateStr] = 0;
+      }
+      
+      groupedByDate[dateStr] += Number(sale.amount);
+    });
+    
+    // Convert to array format for the chart
+    const historicalData = Object.keys(groupedByDate).map(date => ({
+      date,
+      actual: groupedByDate[date],
+      predicted: null as number | null
+    })).sort((a, b) => a.date.localeCompare(b.date));
+    
     // Get the recent sales data
-    const recentSales = salesData.slice(-days);
+    const recentSales = historicalData.slice(-days);
     
     // Combine with predictions
-    return [...recentSales.map(item => ({
-      date: item.date,
-      actual: item.value,
-      predicted: null
-    })), ...predictions.map(item => ({
+    return [...recentSales, ...predictions.map(item => ({
       date: item.date,
       actual: null,
       predicted: item.predicted
@@ -125,8 +141,23 @@ export const PredictiveAnalytics: React.FC = () => {
   const getTrendInfo = () => {
     if (salesData.length < 2 || predictions.length === 0) return null;
     
-    const recentActual = salesData.slice(-10);
-    const recentAvg = recentActual.reduce((sum, item) => sum + item.value, 0) / recentActual.length;
+    // Process the data by date for recent actual
+    const groupedByDate: Record<string, number> = {};
+    
+    salesData.forEach((sale) => {
+      const date = new Date(sale.transaction_date);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      if (!groupedByDate[dateStr]) {
+        groupedByDate[dateStr] = 0;
+      }
+      
+      groupedByDate[dateStr] += Number(sale.amount);
+    });
+    
+    const historicalValues = Object.values(groupedByDate);
+    const recentActual = historicalValues.slice(-10);
+    const recentAvg = recentActual.reduce((sum, value) => sum + value, 0) / recentActual.length;
     
     const predictedAvg = predictions.reduce((sum, item) => sum + item.predicted, 0) / predictions.length;
     
@@ -154,43 +185,51 @@ export const PredictiveAnalytics: React.FC = () => {
           <TrendingUp className="h-4 w-4" />
           <h3 className="font-medium">Predictive Analytics</h3>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setSelectedTimeFrame("7days")}
-            className={`text-xs px-2 py-1 rounded-md ${
-              selectedTimeFrame === "7days" 
-                ? "bg-primary text-primary-foreground" 
-                : "bg-primary/10 hover:bg-primary/20"
-            }`}
-          >
-            7 Days
-          </button>
-          <button 
-            onClick={() => setSelectedTimeFrame("30days")}
-            className={`text-xs px-2 py-1 rounded-md ${
-              selectedTimeFrame === "30days" 
-                ? "bg-primary text-primary-foreground" 
-                : "bg-primary/10 hover:bg-primary/20"
-            }`}
-          >
-            30 Days
-          </button>
-          <button 
-            onClick={() => setSelectedTimeFrame("90days")}
-            className={`text-xs px-2 py-1 rounded-md ${
-              selectedTimeFrame === "90days" 
-                ? "bg-primary text-primary-foreground" 
-                : "bg-primary/10 hover:bg-primary/20"
-            }`}
-          >
-            90 Days
-          </button>
-        </div>
+        {hasUploadedData && (
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setSelectedTimeFrame("7days")}
+              className={`text-xs px-2 py-1 rounded-md ${
+                selectedTimeFrame === "7days" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-primary/10 hover:bg-primary/20"
+              }`}
+            >
+              7 Days
+            </button>
+            <button 
+              onClick={() => setSelectedTimeFrame("30days")}
+              className={`text-xs px-2 py-1 rounded-md ${
+                selectedTimeFrame === "30days" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-primary/10 hover:bg-primary/20"
+              }`}
+            >
+              30 Days
+            </button>
+            <button 
+              onClick={() => setSelectedTimeFrame("90days")}
+              className={`text-xs px-2 py-1 rounded-md ${
+                selectedTimeFrame === "90days" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-primary/10 hover:bg-primary/20"
+              }`}
+            >
+              90 Days
+            </button>
+          </div>
+        )}
       </div>
       
       {isLoading ? (
         <div className="flex items-center justify-center h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : !hasUploadedData ? (
+        <div className="flex flex-col items-center justify-center h-[300px]">
+          <TrendingUp className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+          <h3 className="font-medium text-lg mb-2">No Data Available</h3>
+          <p className="text-muted-foreground mb-4 text-center">Upload your datasets first to see predictive analytics.</p>
         </div>
       ) : (
         <>

@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Loader2,
   UploadCloud,
+  Database
 } from "lucide-react";
 import {
   LineChart,
@@ -45,7 +46,14 @@ const Index = () => {
   const { toast } = useToast();
   const { data: supabaseSalesData = [], isLoading: isSalesLoading, error: salesError } = useSalesData();
   const { data: supabaseCustomers = [], isLoading: isCustomersLoading } = useCustomers();
-  const { salesData, customersData, setSalesData, setCustomersData, hasUploadedData } = useData();
+  const { 
+    salesData, 
+    customersData, 
+    setSalesData, 
+    setCustomersData, 
+    hasUploadedData,
+    setDataSource
+  } = useData();
   const [recentSales, setRecentSales] = useState<SaleWithCustomer[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   
@@ -130,6 +138,7 @@ const Index = () => {
   const handleSalesDataLoaded = (data: any[]) => {
     setSalesData(data);
     setShowUploadDialog(false);
+    setDataSource('upload');
     
     toast({
       title: "Sales Data Uploaded",
@@ -139,7 +148,7 @@ const Index = () => {
 
   const handleCustomersDataLoaded = (data: any[]) => {
     setCustomersData(data);
-    setShowUploadDialog(false);
+    setDataSource('upload');
     
     toast({
       title: "Customer Data Uploaded",
@@ -161,13 +170,13 @@ const Index = () => {
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
             <DialogTrigger asChild>
               <Button>
-                <UploadCloud className="mr-2 h-4 w-4" />
-                Upload Data
+                <Database className="mr-2 h-4 w-4" />
+                Upload Datasets
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
-                <DialogTitle>Upload Your Data</DialogTitle>
+                <DialogTitle>Upload Your Datasets</DialogTitle>
               </DialogHeader>
               <div className="grid gap-6 py-4">
                 <div>
