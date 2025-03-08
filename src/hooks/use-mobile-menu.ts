@@ -1,15 +1,15 @@
 
-import { useState } from "react"
+import { useState } from "react";
 
 export function useMobileMenu() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const toggleMobileMenu = () => {
-    setIsMenuOpen(prev => !prev)
-  }
-  
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return {
     isMenuOpen,
-    toggleMobileMenu,
-  }
+    toggleMobileMenu
+  };
 }
