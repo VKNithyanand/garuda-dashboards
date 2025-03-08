@@ -80,6 +80,14 @@ export default {
           orange: "hsl(var(--brand-orange))",
           pink: "hsl(var(--brand-pink))",
         },
+        // Add vibrant colors
+        vibrant: {
+          coral: "hsl(var(--vibrant-coral))",
+          teal: "hsl(var(--vibrant-teal))",
+          lavender: "hsl(var(--vibrant-lavender))",
+          mint: "hsl(var(--vibrant-mint))",
+          amber: "hsl(var(--vibrant-amber))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
