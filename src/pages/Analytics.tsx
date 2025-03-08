@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts";
@@ -62,52 +61,41 @@ const Analytics = () => {
     }
   });
 
-  // Function to handle "Take Action" on recommendations
   const handleTakeAction = async (id: string) => {
     try {
-      // Find the recommendation
       const recommendation = recommendations.find(rec => rec.id === id);
       if (!recommendation) return;
       
-      // Update local state to show action in progress
       setRecommendations(prev => 
         prev.map(rec => 
           rec.id === id ? { ...rec, status: "in_progress" } : rec
         )
       );
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Update data based on recommendation
       let actionMessage = "";
       
       if (recommendation.category === "Marketing") {
-        // Simulate running a marketing campaign
         actionMessage = "Marketing campaign initiated for " + recommendation.title.split(" ").pop();
       } else if (recommendation.category === "Inventory") {
-        // Simulate inventory restock
         actionMessage = "Restock order placed for " + recommendation.title.split(" ").pop();
       } else if (recommendation.category === "Pricing") {
-        // Simulate price optimization
         actionMessage = "Price optimization implemented for " + recommendation.title.split(" ").pop();
       }
       
-      // Update recommendation status
       setRecommendations(prev => 
         prev.map(rec => 
           rec.id === id ? { ...rec, status: "completed" } : rec
         )
       );
       
-      // Show toast notification
       toast({
         title: "Action Completed",
         description: actionMessage,
       });
       
     } catch (error: any) {
-      // Revert status on error
       setRecommendations(prev => 
         prev.map(rec => 
           rec.id === id ? { ...rec, status: "pending" } : rec
@@ -250,8 +238,7 @@ const Analytics = () => {
                 <div className="space-y-4">
                   {recommendations.map((recommendation) => (
                     <Alert key={recommendation.id} variant={
-                      recommendation.impact === "high" ? "destructive" : 
-                      recommendation.impact === "medium" ? "default" : "outline"
+                      recommendation.impact === "high" ? "destructive" : "default"
                     }>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
