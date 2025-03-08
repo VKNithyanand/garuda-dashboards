@@ -5,6 +5,9 @@ import { Upload, FileText, X, AlertTriangle, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define a type for the valid table names in our Supabase database
+type ValidTableName = 'sales' | 'customers' | 'insights';
+
 interface CsvUploaderProps {
   onDataLoaded: (data: any[]) => void;
   type: 'sales' | 'customers' | 'insights';
@@ -116,12 +119,12 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
 
   const saveToSupabase = async (data: any[]) => {
     try {
-      let table = '';
+      // Use type directly as the table name since it's already properly typed
+      const table: ValidTableName = type;
       const processedData = [];
 
-      switch (type) {
+      switch (table) {
         case 'sales':
-          table = 'sales';
           for (const item of data) {
             processedData.push({
               product_name: item.product || item.product_name || "Unknown Product",
@@ -133,7 +136,6 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
           break;
           
         case 'customers':
-          table = 'customers';
           for (const item of data) {
             processedData.push({
               name: item.name || item.customer_name || "Unknown Customer",
@@ -143,7 +145,6 @@ export const CsvUploader = ({ onDataLoaded, type }: CsvUploaderProps) => {
           break;
           
         case 'insights':
-          table = 'insights';
           for (const item of data) {
             processedData.push({
               title: item.title || "Untitled Insight",
