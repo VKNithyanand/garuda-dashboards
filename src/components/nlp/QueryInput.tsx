@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { processNLPQuery } from "@/lib/api";
-import { Brain, Loader2, UploadCloud, RefreshCw, Mic } from "lucide-react";
+import { Brain, Loader2, UploadCloud, RefreshCw, Mic, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { QuerySuggestions } from "./QuerySuggestions";
 import { QueryHistory } from "./QueryHistory";
@@ -10,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
 import speechRecognition, { RecognitionStatus } from "@/utils/speechRecognition";
 import textToSpeech from "@/utils/textToSpeech";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const QueryInput = () => {
   const [query, setQuery] = useState("");
@@ -26,9 +30,17 @@ export const QueryInput = () => {
     "Compare campaign conversion rates",
     "Find growth opportunities in current market"
   ]);
+  const [showExamples, setShowExamples] = useState(false);
+  const [exampleQueries] = useState([
+    "Show revenue trends by quarter",
+    "What were our top-selling products last month?",
+    "Compare this year's performance to last year",
+    "Show customer retention rate over time",
+    "Identify our highest growth markets",
+    "Analyze marketing campaign effectiveness"
+  ]);
   const { toast } = useToast();
 
-  // Determine if voice recognition is supported
   const isVoiceSupported = speechRecognition.checkSupport();
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -50,7 +62,6 @@ export const QueryInput = () => {
       setResult(response);
       setExpanded(true);
       
-      // Add to query history if not already present
       if (!queryHistory.includes(query)) {
         setQueryHistory(prev => [query, ...prev].slice(0, 5));
       }
@@ -67,7 +78,6 @@ export const QueryInput = () => {
           description: `Found insights related to ${response.type}`,
         });
         
-        // Read out a summary of the results if appropriate
         if (response.summary) {
           textToSpeech.speak(response.summary);
         }
@@ -85,7 +95,6 @@ export const QueryInput = () => {
 
   const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion);
-    // Auto-submit the suggestion
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
     handleSubmit(fakeEvent);
   };
@@ -121,7 +130,6 @@ export const QueryInput = () => {
     speechRecognition.start(
       (text) => {
         setQuery(text);
-        // Auto-submit the recognized text
         const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
         handleSubmit(fakeEvent);
       },
@@ -129,7 +137,6 @@ export const QueryInput = () => {
     );
   };
   
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       speechRecognition.stop();
@@ -167,15 +174,44 @@ export const QueryInput = () => {
           <>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="relative">
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ask about your data (e.g., 'Show me recent sales', 'User trends', 'Insights')"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  {isVoiceSupported && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Ask about your data..."
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Info className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Example Queries</h4>
+                        <div className="flex flex-col gap-2">
+                          {exampleQueries.map((example, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                setQuery(example);
+                                const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                                handleSubmit(fakeEvent);
+                              }}
+                              className="text-sm text-left px-2 py-1 hover:bg-accent rounded-md"
+                            >
+                              {example}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {speechRecognition.checkSupport() && (
                     <button
                       type="button"
                       onClick={startVoiceRecognition}
@@ -203,7 +239,6 @@ export const QueryInput = () => {
               </div>
             </form>
 
-            {/* Quick suggestions */}
             {!isLoading && !result && (
               <QuerySuggestions 
                 suggestions={suggestions}
@@ -224,7 +259,6 @@ export const QueryInput = () => {
               />
             )}
 
-            {/* Query history */}
             {queryHistory.length > 0 && !isLoading && (
               <QueryHistory 
                 queryHistory={queryHistory}

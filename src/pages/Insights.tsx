@@ -1,6 +1,6 @@
-
-import React, { useState } from "react";
+import React from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { NLPQueriesSection } from "@/components/NLPQueriesSection";
 import { useInsights } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -203,7 +203,14 @@ const Insights = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 animate-fade-up">
+        <div>
+          <h1 className="font-semibold text-2xl tracking-tight">Insights</h1>
+          <p className="text-muted-foreground">
+            Data-driven insights to help you make better business decisions
+          </p>
+        </div>
+        
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-semibold text-2xl tracking-tight">Business Insights</h1>
@@ -587,6 +594,10 @@ const Insights = () => {
           </>
         )}
       </div>
+
+      <section className="mt-12 pt-8 border-t">
+        <NLPQueriesSection />
+      </section>
 
       <CompetitorBenchmarking />
     </DashboardLayout>
