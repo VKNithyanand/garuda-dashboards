@@ -21,6 +21,7 @@ export const useAuthCheck = () => {
         if (!session) {
           // No active session, redirect to auth page
           if (isMounted) {
+            console.log("No session found, redirecting to auth");
             navigate('/auth');
           }
           return;
@@ -28,6 +29,7 @@ export const useAuthCheck = () => {
         
         // Session exists, set user
         if (isMounted) {
+          console.log("Session found, user:", session.user.email);
           setUser(session.user);
         }
       } catch (error) {
@@ -54,9 +56,9 @@ export const useAuthCheck = () => {
       (event, session) => {
         if (!isMounted) return;
         
-        console.log("Auth state change:", event);
+        console.log("Auth state change:", event, session?.user?.email);
         
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           setUser(session?.user || null);
           navigate('/');
         } else if (event === 'SIGNED_OUT') {

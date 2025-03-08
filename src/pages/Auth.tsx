@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -11,7 +12,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true); // Default to sign up
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const Auth = () => {
     
     try {
       if (isSignUp) {
-        // Sign up
+        // Sign up with auto sign-in
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -52,24 +53,24 @@ const Auth = () => {
         if (data?.user?.identities?.length === 0) {
           toast({
             title: "Email already registered",
-            description: "Please sign in or use a different email address.",
+            description: "Please sign in with your existing account.",
             variant: "destructive",
           });
         } else {
+          console.log("Signup success, session:", data.session);
+          
           // If auto-confirm is enabled or email verification is not required
           if (data.session) {
             toast({
-              title: "Account created!",
-              description: "You're now logged in to the dashboard.",
+              title: "Account created successfully!",
+              description: "Redirecting to dashboard...",
             });
             navigate("/");
           } else {
             toast({
               title: "Account created!",
-              description: "Please verify your email if required, or sign in.",
+              description: "Please verify your email to complete registration.",
             });
-            // Automatically switch to login view
-            setIsSignUp(false);
           }
         }
       } else {
