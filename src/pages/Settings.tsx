@@ -15,10 +15,12 @@ import {
   Plus,
   Smartphone
 } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     pushNotifications: false,
@@ -39,6 +41,10 @@ const Settings = () => {
     apiKey: '',
     apiSecret: ''
   });
+  const [notificationStatus, setNotificationStatus] = useState<{
+    message: string;
+    type: "success" | "error" | "loading" | null;
+  }>({ message: "", type: null });
   
   // Get the current user
   useEffect(() => {
@@ -46,6 +52,7 @@ const Settings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+        setUserEmail(user.email);
       }
     };
     
@@ -69,6 +76,97 @@ const Settings = () => {
       });
     }
   }, [userSettings]);
+
+  // Function to send a test notification
+  const sendTestNotification = async (type: 'email' | 'push' | 'marketing') => {
+    if (!userId || !userEmail) {
+      toast({
+        title: "Not Authenticated",
+        description: "You need to be logged in to send test notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setNotificationStatus({
+      message: `Sending test ${type} notification...`,
+      type: "loading"
+    });
+    
+    try {
+      let payload = {};
+      let action = '';
+      
+      if (type === 'email') {
+        action = 'email_notification';
+        payload = {
+          recipient: userEmail,
+          subject: "Test Email Notification",
+          message: "This is a test email notification from the dashboard."
+        };
+      } else if (type === 'push') {
+        action = 'push_notification';
+        payload = {
+          userId,
+          title: "Test Push Notification",
+          body: "This is a test push notification from the dashboard."
+        };
+      } else if (type === 'marketing') {
+        action = 'marketing_email';
+        payload = {
+          recipients: [userEmail],
+          campaign: "Test Marketing Campaign",
+          content: "This is a test marketing email campaign."
+        };
+      }
+      
+      const response = await fetch('https://pjgxeexnyculxivmtccj.supabase.co/functions/v1/send-invitation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          data: payload
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setNotificationStatus({
+          message: data.message,
+          type: "success"
+        });
+        
+        setTimeout(() => {
+          setNotificationStatus({ message: "", type: null });
+        }, 5000);
+        
+        toast({
+          title: "Notification Sent",
+          description: data.message,
+        });
+      } else {
+        throw new Error(data.error || "Failed to send notification");
+      }
+    } catch (error: any) {
+      setNotificationStatus({
+        message: error.message || `Failed to send ${type} notification`,
+        type: "error"
+      });
+      
+      toast({
+        title: "Error",
+        description: error.message || `Failed to send ${type} notification`,
+        variant: "destructive",
+      });
+      
+      setTimeout(() => {
+        setNotificationStatus({ message: "", type: null });
+      }, 5000);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -97,13 +195,12 @@ const Settings = () => {
           emailNotifications: !preferences.emailNotifications,
         });
         
-        // Send a test notification
+        // Send a test notification if being enabled
         if (!preferences.emailNotifications) {
-          // Push a test email notification
-          toast({
-            title: "Email Notification Sent",
-            description: "A welcome email notification has been sent to your email address.",
-          });
+          // We'll handle this after saving the preference
+          setTimeout(() => {
+            sendTestNotification('email');
+          }, 1000);
         }
       } else if (setting === "pushNotifications") {
         updatedSettings.push_notifications = !preferences.pushNotifications;
@@ -112,29 +209,21 @@ const Settings = () => {
           pushNotifications: !preferences.pushNotifications,
         });
         
-        // Show push notification
+        // Request notification permissions if being enabled
         if (!preferences.pushNotifications) {
-          // Request notification permission
           if (Notification.permission !== "granted") {
-            Notification.requestPermission().then(permission => {
-              if (permission === "granted") {
-                new Notification("Notifications Enabled", {
-                  body: "You will now receive push notifications.",
-                  icon: "/placeholder.svg"
-                });
-              }
-            });
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+              setTimeout(() => {
+                sendTestNotification('push');
+              }, 1000);
+            }
           } else {
-            new Notification("Notifications Enabled", {
-              body: "You will now receive push notifications.",
-              icon: "/placeholder.svg"
-            });
+            // Send a test push notification
+            setTimeout(() => {
+              sendTestNotification('push');
+            }, 1000);
           }
-          
-          toast({
-            title: "Push Notifications Enabled",
-            description: "You will now receive push notifications.",
-          });
         }
       } else if (setting === "marketingEmails") {
         updatedSettings.marketing_emails = !preferences.marketingEmails;
@@ -144,15 +233,9 @@ const Settings = () => {
         });
         
         if (!preferences.marketingEmails) {
-          toast({
-            title: "Marketing Emails Enabled",
-            description: "You have subscribed to marketing emails.",
-          });
-        } else {
-          toast({
-            title: "Marketing Emails Disabled",
-            description: "You have unsubscribed from marketing emails.",
-          });
+          setTimeout(() => {
+            sendTestNotification('marketing');
+          }, 1000);
         }
       }
       
@@ -304,6 +387,20 @@ const Settings = () => {
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    {notificationStatus.type && (
+                      <Alert variant={notificationStatus.type === "error" ? "destructive" : "default"}>
+                        {notificationStatus.type === "loading" ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : notificationStatus.type === "success" ? (
+                          <Check className="h-4 w-4 mr-2" />
+                        ) : (
+                          <X className="h-4 w-4 mr-2" />
+                        )}
+                        <AlertTitle>Notification Status</AlertTitle>
+                        <AlertDescription>{notificationStatus.message}</AlertDescription>
+                      </Alert>
+                    )}
+                    
                     {/* Email Notifications */}
                     <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
                       <div className="flex items-center gap-3">
@@ -315,17 +412,34 @@ const Settings = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleToggleSetting("emailNotifications")}
-                        disabled={isSaving}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.emailNotifications ? "bg-primary" : "bg-input"}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                            preferences.emailNotifications ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {preferences.emailNotifications && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => sendTestNotification('email')}
+                            disabled={isSaving || notificationStatus.type === "loading"}
+                          >
+                            {notificationStatus.type === "loading" ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
+                            ) : (
+                              <Mail className="h-4 w-4 mr-2" />
+                            )}
+                            Test
+                          </Button>
+                        )}
+                        <button
+                          onClick={() => handleToggleSetting("emailNotifications")}
+                          disabled={isSaving}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.emailNotifications ? "bg-primary" : "bg-input"}`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                              preferences.emailNotifications ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Push Notifications */}
@@ -339,17 +453,34 @@ const Settings = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleToggleSetting("pushNotifications")}
-                        disabled={isSaving}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.pushNotifications ? "bg-primary" : "bg-input"}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                            preferences.pushNotifications ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {preferences.pushNotifications && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => sendTestNotification('push')}
+                            disabled={isSaving || notificationStatus.type === "loading"}
+                          >
+                            {notificationStatus.type === "loading" ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
+                            ) : (
+                              <Bell className="h-4 w-4 mr-2" />
+                            )}
+                            Test
+                          </Button>
+                        )}
+                        <button
+                          onClick={() => handleToggleSetting("pushNotifications")}
+                          disabled={isSaving}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.pushNotifications ? "bg-primary" : "bg-input"}`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                              preferences.pushNotifications ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Marketing Emails */}
@@ -363,17 +494,41 @@ const Settings = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleToggleSetting("marketingEmails")}
-                        disabled={isSaving}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.marketingEmails ? "bg-primary" : "bg-input"}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                            preferences.marketingEmails ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {preferences.marketingEmails && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => sendTestNotification('marketing')}
+                            disabled={isSaving || notificationStatus.type === "loading"}
+                          >
+                            {notificationStatus.type === "loading" ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
+                            ) : (
+                              <Mail className="h-4 w-4 mr-2" />
+                            )}
+                            Test
+                          </Button>
+                        )}
+                        <button
+                          onClick={() => handleToggleSetting("marketingEmails")}
+                          disabled={isSaving}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.marketingEmails ? "bg-primary" : "bg-input"}`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                              preferences.marketingEmails ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6">
+                      <p className="text-sm text-muted-foreground">
+                        These settings control how you receive notifications from the application. 
+                        You can use the test buttons to verify that notifications are working correctly.
+                      </p>
                     </div>
                   </div>
                 )}
