@@ -1,17 +1,16 @@
-
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
 import { RealTimeMetrics } from "@/components/RealTimeMetrics";
-import { NLPQueryInput } from "@/components/NLPQueryInput";
 import { PredictiveAnalytics } from "@/components/PredictiveAnalytics";
 import { useSalesData, useCustomers, subscribeToSalesUpdates } from "@/lib/supabase-client";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { CsvUploader } from "@/components/CsvUploader";
+import { NLPQueriesSection } from "@/components/NLPQueriesSection";
 import {
-  LineChart as LineChartIcon,
-  BarChart as BarChartIcon,
+  LineChartIcon,
+  BarChartIcon,
   PieChart,
   DollarSign,
   Users,
@@ -57,17 +56,14 @@ const Index = () => {
   const [recentSales, setRecentSales] = useState<SaleWithCustomer[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   
-  // Use either uploaded data or supabase data
   const effectiveSalesData = salesData.length > 0 ? salesData : supabaseSalesData;
   const effectiveCustomers = customersData.length > 0 ? customersData : supabaseCustomers;
   
-  // Process sales data for the chart
   const processedSalesData = effectiveSalesData.slice(0, 7).map(sale => ({
     month: new Date(sale.transaction_date).toLocaleString('default', { month: 'short' }),
     revenue: Number(sale.amount),
   }));
   
-  // Subscribe to real-time sales updates
   useEffect(() => {
     const unsubscribe = subscribeToSalesUpdates((payload) => {
       toast({
@@ -84,15 +80,12 @@ const Index = () => {
     };
   }, [toast]);
   
-  // Generate recent sales data
   useEffect(() => {
     if (effectiveSalesData.length > 0 && effectiveCustomers.length > 0) {
-      // Get the 5 most recent sales
       const sortedSales = [...effectiveSalesData].sort((a, b) => 
         new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
       ).slice(0, 5);
       
-      // Map sales to include customer information
       const mappedSales = sortedSales.map(sale => {
         const customer = effectiveCustomers.find(c => c.id === sale.customer_id) || {
           name: "Anonymous",
@@ -123,16 +116,12 @@ const Index = () => {
     });
   }
   
-  // Calculate total revenue
   const totalRevenue = effectiveSalesData.reduce((sum, sale) => sum + Number(sale.amount), 0);
   
-  // Calculate active users (just using customers count for demo)
   const activeUsers = effectiveCustomers.length;
   
-  // Calculate sales count
   const salesCount = effectiveSalesData.length;
   
-  // Calculate growth (using a random value for demo)
   const growth = 12.4;
 
   const handleSalesDataLoaded = (data: any[]) => {
@@ -331,13 +320,12 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Advanced Analytics Section */}
         <div className="grid gap-4 md:grid-cols-2">
           <PredictiveAnalytics />
-          <NLPQueryInput />
         </div>
 
-        {/* Real-Time Metrics Section */}
+        <NLPQueriesSection />
+
         <div className="grid gap-4 md:grid-cols-2">
           <RealTimeMetrics />
         </div>
