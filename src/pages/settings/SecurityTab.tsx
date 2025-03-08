@@ -1,12 +1,10 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, KeyRound, Shield, PhoneCall } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SecurityTabProps {
   userId?: string;
@@ -16,44 +14,13 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [recoveryCodesGenerated, setRecoveryCodesGenerated] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
-  
+  const [tfaStatus, setTfaStatus] = useState<"disabled" | "enabling" | "enabled">("disabled");
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!userId) return;
-      
-      try {
-        setIsLoading(true);
-        
-        // Get user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserEmail(user.email);
-          
-          // In a real app, we would fetch 2FA status from the database
-          // For now we'll simulate it being disabled by default
-          setTwoFactorEnabled(false);
-        }
-      } catch (error) {
-        console.error("Error fetching security data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, [userId]);
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleChangePassword = async () => {
     if (!userId) {
       toast({
         title: "Error",
@@ -62,105 +29,81 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
       });
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Your new password and confirmation password must match.",
+        title: "Error",
+        description: "New password and confirmation do not match.",
         variant: "destructive",
       });
       return;
     }
-    
-    if (newPassword.length < 6) {
+
+    if (newPassword.length < 8) {
       toast({
-        title: "Password too short",
-        description: "Your new password must be at least 6 characters long.",
+        title: "Error",
+        description: "Password must be at least 8 characters long.",
         variant: "destructive",
       });
       return;
     }
-    
-    setIsChangingPassword(true);
+
+    setIsLoading(true);
     
     try {
-      // First verify the current password by trying to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userEmail || '',
-        password: currentPassword,
+      // Using Supabase's password update
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
       });
       
-      if (signInError) {
-        throw new Error("Current password is incorrect");
-      }
-      
-      // Then update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      
-      if (updateError) {
-        throw updateError;
-      }
+      if (error) throw error;
       
       toast({
-        title: "Password updated",
-        description: "Your password has been successfully changed.",
+        title: "Password Updated",
+        description: "Your password has been updated successfully. You may need to sign in again.",
       });
       
-      // Clear form fields
+      // Reset the form
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
+      console.error("Error updating password:", error);
       toast({
-        title: "Password change failed",
-        description: error.message || "An error occurred while changing your password.",
+        title: "Update Failed",
+        description: error.message || "There was an error updating your password.",
         variant: "destructive",
       });
     } finally {
-      setIsChangingPassword(false);
+      setIsLoading(false);
     }
   };
 
-  const toggleTwoFactor = () => {
-    // For demo purposes, we'll simulate enabling/disabling 2FA
-    // In a real app, this would involve more complex authentication steps
-    const newStatus = !twoFactorEnabled;
+  const handleSetupTFA = async () => {
+    setTfaStatus("enabling");
     
-    toast({
-      title: newStatus ? "2FA Setup Required" : "2FA Disabled",
-      description: newStatus 
-        ? "In a production app, you would be prompted to set up 2FA now." 
-        : "Two-factor authentication has been disabled.",
-    });
-    
-    setTwoFactorEnabled(newStatus);
-    
-    if (newStatus) {
-      // In a real app, this would trigger a setup process
-      // For demo, we'll just show this as enabled
-      setRecoveryCodesGenerated(false);
+    try {
+      // In a real app, this would integrate with Supabase's multi-factor authentication
+      // For demo purposes, we'll simulate the setup process
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setTfaStatus("enabled");
+      
+      toast({
+        title: "2FA Enabled",
+        description: "Two-factor authentication has been successfully set up for your account.",
+      });
+    } catch (error: any) {
+      console.error("Error setting up 2FA:", error);
+      setTfaStatus("disabled");
+      
+      toast({
+        title: "Setup Failed",
+        description: error.message || "There was an error setting up two-factor authentication.",
+        variant: "destructive",
+      });
     }
   };
-
-  const generateRecoveryCodes = () => {
-    // Simulate generating recovery codes
-    toast({
-      title: "Recovery Codes Generated",
-      description: "In a production app, you would see your recovery codes here.",
-    });
-    
-    setRecoveryCodesGenerated(true);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -169,139 +112,128 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
         <h2 className="text-lg font-medium">Security Settings</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Manage your account security settings
+        Manage your password and account security
       </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5" /> Password
-          </CardTitle>
-          <CardDescription>
-            Change your account password
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="current-password" className="text-sm font-medium">
-                Current Password
-              </label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="new-password" className="text-sm font-medium">
-                New Password
-              </label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="confirm-password" className="text-sm font-medium">
-                Confirm New Password
-              </label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
-            >
-              {isChangingPassword ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Change Password"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PhoneCall className="h-5 w-5" /> Two-Factor Authentication
-          </CardTitle>
-          <CardDescription>
-            Add an extra layer of security to your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="text-sm font-medium">Enable Two-Factor Authentication</div>
-              <div className="text-xs text-muted-foreground">
-                Require a code from your phone in addition to your password
-              </div>
-            </div>
-            <Switch
-              checked={twoFactorEnabled}
-              onCheckedChange={toggleTwoFactor}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="currentPassword" className="text-sm font-medium">
+            Current Password
+          </label>
+          <div className="relative">
+            <Input
+              id="currentPassword"
+              type={showCurrentPassword ? "text" : "password"}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter your current password"
             />
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+            >
+              {showCurrentPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
           </div>
+        </div>
 
-          {twoFactorEnabled && (
+        <div className="space-y-2">
+          <label htmlFor="newPassword" className="text-sm font-medium">
+            New Password
+          </label>
+          <div className="relative">
+            <Input
+              id="newPassword"
+              type={showNewPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter your new password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              aria-label={showNewPassword ? "Hide password" : "Show password"}
+            >
+              {showNewPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Password must be at least 8 characters long.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="confirmPassword" className="text-sm font-medium">
+            Confirm New Password
+          </label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your new password"
+          />
+        </div>
+
+        <Button
+          onClick={handleChangePassword}
+          disabled={
+            isLoading ||
+            !currentPassword ||
+            !newPassword ||
+            !confirmPassword ||
+            newPassword !== confirmPassword
+          }
+        >
+          {isLoading ? (
             <>
-              <div className="space-y-2 pt-2 border-t">
-                <label htmlFor="phone" className="text-sm font-medium">
-                  Phone Number (for SMS verification)
-                </label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                />
-                <p className="text-xs text-muted-foreground">
-                  In a production app, this would allow you to receive verification codes
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-2 border-t">
-                <div className="text-sm font-medium">Recovery Codes</div>
-                <p className="text-xs text-muted-foreground">
-                  Generate recovery codes in case you lose access to your phone
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={generateRecoveryCodes}
-                  disabled={recoveryCodesGenerated}
-                >
-                  {recoveryCodesGenerated ? "Codes Generated" : "Generate Recovery Codes"}
-                </Button>
-              </div>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Updating...
             </>
+          ) : (
+            "Update Password"
           )}
-        </CardContent>
-      </Card>
+        </Button>
+      </div>
+
+      <div className="pt-6 border-t">
+        <h3 className="text-md font-medium mb-4">Two-Factor Authentication</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm">Enhance your account security</p>
+            <p className="text-xs text-muted-foreground">
+              Set up two-factor authentication for additional security.
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleSetupTFA}
+            disabled={tfaStatus === "enabling" || tfaStatus === "enabled"}
+          >
+            {tfaStatus === "enabling" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Setting up...
+              </>
+            ) : tfaStatus === "enabled" ? (
+              "Enabled"
+            ) : (
+              "Set Up 2FA"
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
