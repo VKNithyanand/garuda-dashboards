@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
+import { VoiceAssistant } from "./VoiceAssistant";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -25,6 +26,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {children}
         </main>
       </div>
+      
+      {/* Voice Assistant Integration */}
+      <VoiceAssistant />
       
       {/* Add a subtle gradient overlay at the bottom */}
       <div className="fixed bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-background/80 to-transparent pointer-events-none z-0"></div>

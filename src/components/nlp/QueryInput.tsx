@@ -1,13 +1,15 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { processNLPQuery } from "@/lib/api";
-import { Brain, Loader2, UploadCloud, RefreshCw } from "lucide-react";
+import { Brain, Loader2, UploadCloud, RefreshCw, Mic } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { QuerySuggestions } from "./QuerySuggestions";
 import { QueryHistory } from "./QueryHistory";
 import { QueryResults } from "./QueryResults";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
+import speechRecognition, { RecognitionStatus } from "@/utils/speechRecognition";
+import textToSpeech from "@/utils/textToSpeech";
 
 export const QueryInput = () => {
   const [query, setQuery] = useState("");
@@ -16,6 +18,7 @@ export const QueryInput = () => {
   const [expanded, setExpanded] = useState(true);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const { hasUploadedData } = useData();
+  const [recognitionStatus, setRecognitionStatus] = useState<RecognitionStatus>('inactive');
   const [suggestions] = useState([
     "Show revenue trends by quarter",
     "Identify top-performing marketing channels",
@@ -25,8 +28,11 @@ export const QueryInput = () => {
   ]);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Determine if voice recognition is supported
+  const isVoiceSupported = speechRecognition.checkSupport();
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!query.trim()) return;
     
     if (!hasUploadedData) {
@@ -60,6 +66,11 @@ export const QueryInput = () => {
           title: "Analysis Complete",
           description: `Found insights related to ${response.type}`,
         });
+        
+        // Read out a summary of the results if appropriate
+        if (response.summary) {
+          textToSpeech.speak(response.summary);
+        }
       }
     } catch (error: any) {
       toast({
@@ -91,6 +102,39 @@ export const QueryInput = () => {
       description: "Your query history has been cleared.",
     });
   };
+  
+  const startVoiceRecognition = () => {
+    if (recognitionStatus === 'listening') {
+      speechRecognition.stop();
+      return;
+    }
+    
+    if (!hasUploadedData) {
+      toast({
+        title: "No Data Available",
+        description: "Please upload your datasets first to use voice recognition.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    speechRecognition.start(
+      (text) => {
+        setQuery(text);
+        // Auto-submit the recognized text
+        const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+        handleSubmit(fakeEvent);
+      },
+      (status) => setRecognitionStatus(status)
+    );
+  };
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      speechRecognition.stop();
+    };
+  }, []);
 
   return (
     <div className="dashboard-card">
@@ -130,17 +174,32 @@ export const QueryInput = () => {
                   placeholder="Ask about your data (e.g., 'Show me recent sales', 'User trends', 'Insights')"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-3"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Ask"
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {isVoiceSupported && (
+                    <button
+                      type="button"
+                      onClick={startVoiceRecognition}
+                      className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring h-7 w-7 ${
+                        recognitionStatus === 'listening' 
+                          ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      <Mic className="h-4 w-4" />
+                    </button>
                   )}
-                </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-3"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Ask"
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
 
