@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,10 +117,10 @@ export const CompetitorBenchmarking: React.FC<CompetitorBenchmarkingProps> = ({
     }));
   };
   
-  // Function to get fill color based on the entry name
-  const getBarFill = (entry: any) => {
-    if (entry.name === "Your Business") return "#3b82f6";
-    if (entry.name === "Industry Average") return "#6b7280";
+  // Function to get bar fill color based on entry name
+  const getBarColor = (name: string) => {
+    if (name === "Your Business") return "#3b82f6";
+    if (name === "Industry Average") return "#6b7280";
     return "#10b981";
   };
   
@@ -211,16 +210,13 @@ export const CompetitorBenchmarking: React.FC<CompetitorBenchmarkingProps> = ({
                         <Tooltip />
                         <Bar 
                           dataKey="value" 
+                          name="Value"
                           fill="#10b981"
-                          // The fix: use a custom function for colors through the style prop instead
-                          style={(entry) => ({ 
-                            fill: entry.name === "Your Business" 
-                              ? "#3b82f6" 
-                              : entry.name === "Industry Average" 
-                                ? "#6b7280" 
-                                : "#10b981"
-                          })}
-                        />
+                        >
+                          {formatBenchmarkingData(index).map((entry, i) => (
+                            <Cell key={`cell-${i}`} fill={getBarColor(entry.name)} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
