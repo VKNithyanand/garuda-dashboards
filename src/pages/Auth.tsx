@@ -55,16 +55,28 @@ const Auth = () => {
           options: {
             data: {
               name
-            }
+            },
+            emailRedirectTo: window.location.origin
           }
         });
         
         if (error) throw error;
         
-        toast({
-          title: "Account created!",
-          description: "Welcome to the dashboard. Please verify your email if required.",
-        });
+        // Check if email confirmation is required
+        if (data?.user?.identities?.length === 0) {
+          toast({
+            title: "Email already registered",
+            description: "Please sign in or use a different email address.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "You can now sign in with your credentials.",
+          });
+          // Automatically switch to login view
+          setIsSignUp(false);
+        }
       } else {
         // Sign in
         const { data, error } = await supabase.auth.signInWithPassword({

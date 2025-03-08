@@ -2,11 +2,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export const useAuthCheck = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -24,6 +26,11 @@ export const useAuthCheck = () => {
         setUser(session.user);
       } catch (error) {
         console.error('Auth check error:', error);
+        toast({
+          title: "Authentication Error",
+          description: "Please sign in again",
+          variant: "destructive",
+        });
         navigate('/auth');
       } finally {
         setLoading(false);
@@ -37,6 +44,7 @@ export const useAuthCheck = () => {
       (event, session) => {
         if (event === 'SIGNED_IN') {
           setUser(session?.user || null);
+          navigate('/');
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           navigate('/auth');
@@ -47,7 +55,7 @@ export const useAuthCheck = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   return { user, loading };
 };
