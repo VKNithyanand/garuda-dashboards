@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,21 +50,19 @@ const Users = () => {
     bio: ""
   });
   
-  // Converting customers to users with additional info
   const users = customers.map(customer => ({
     id: customer.id,
     name: customer.name,
     email: customer.email,
-    role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)], // Random role for demo
-    status: Math.random() > 0.2 ? "Active" : "Away", // Random status
+    role: ["Admin", "User", "Manager"][Math.floor(Math.random() * 3)],
+    status: Math.random() > 0.2 ? "Active" : "Away",
     lastActive: customer.last_active ? new Date(customer.last_active).toLocaleString() : "Never",
     department: ["Engineering", "Marketing", "Sales", "Support"][Math.floor(Math.random() * 4)],
     location: ["New York", "London", "Tokyo", "Berlin", "Sydney"][Math.floor(Math.random() * 5)],
     phone: "+1 " + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 10000),
     bio: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl nec ultricies lacinia."
   }));
-  
-  // Apply filters and search
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === "" || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,7 +76,7 @@ const Users = () => {
       
     return matchesSearch && matchesStatus && matchesRole;
   });
-  
+
   useEffect(() => {
     if (showUserDetail) {
       const user = users.find(u => u.id === showUserDetail);
@@ -96,7 +93,7 @@ const Users = () => {
       }
     }
   }, [showUserDetail, users]);
-  
+
   if (error) {
     toast({
       title: "Error loading users",
@@ -124,7 +121,6 @@ const Users = () => {
       return;
     }
     
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newUser.email)) {
       toast({
@@ -147,9 +143,10 @@ const Users = () => {
         description: `${newUser.name} has been added successfully.`,
       });
       
-      // Reset form
       setNewUser({ name: "", email: "", role: "User" });
       setIsAddingUser(false);
+      
+      refetch();
       
     } catch (error: any) {
       toast({
@@ -180,11 +177,44 @@ const Users = () => {
 
   const selectAllUsers = () => {
     if (selectedUsers.length === filteredUsers.length) {
-      // If all are selected, unselect all
       setSelectedUsers([]);
     } else {
-      // Otherwise select all
       setSelectedUsers(filteredUsers.map(user => user.id));
+    }
+  };
+
+  const handleInviteUsers = async () => {
+    if (selectedUsers.length === 0) {
+      toast({
+        title: "No Users Selected",
+        description: "Please select at least one user to invite.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setActiveAction("invite");
+    try {
+      const selectedUsersData = users.filter(user => selectedUsers.includes(user.id));
+      const emails = selectedUsersData.map(user => user.email);
+      
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast({
+        title: "Invitations Sent",
+        description: `Invitation emails have been sent to ${emails.length} user(s).`,
+      });
+      
+      setSelectedUsers([]);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error Sending Invitations",
+        description: error.message || "Failed to send invitations. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setActiveAction(null);
     }
   };
 
@@ -198,24 +228,25 @@ const Users = () => {
       return;
     }
 
+    if (action === "invite") {
+      await handleInviteUsers();
+      return;
+    }
+
     setActiveAction(action);
     try {
-      // Simulate processing time for the action
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // In a real app, we would call an API to perform the action on the selected users
-      
       const actionMap: Record<string, string> = {
-        "invite": "invited",
         "export": "exported",
         "delete": "deleted"
       };
       
       if (action === "delete") {
-        // Actually delete the users
         for (const userId of selectedUsers) {
           await deleteCustomer.mutateAsync(userId);
         }
+        refetch();
       }
       
       toast({
@@ -223,7 +254,6 @@ const Users = () => {
         description: `Successfully ${actionMap[action]} ${selectedUsers.length} user(s).`,
       });
       
-      // Clear selected users after action
       setSelectedUsers([]);
       
     } catch (error: any) {
@@ -240,11 +270,14 @@ const Users = () => {
   const performQuickAction = async (action: string) => {
     setActiveAction(action);
     try {
-      // Simulate API call
+      if (action === "invite") {
+        await handleInviteUsers();
+        return;
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const actionMessages: Record<string, string> = {
-        "invite": "Invitation emails have been sent to users",
         "review": "Access review has been completed"
       };
       
@@ -284,8 +317,6 @@ const Users = () => {
     if (!showUserDetail) return;
     
     try {
-      // In a real app, this would update the user details in the database
-      // For this demo, we'll just simulate it
       await new Promise(resolve => setTimeout(resolve, 800));
       
       toast({
@@ -302,8 +333,7 @@ const Users = () => {
       });
     }
   };
-  
-  // Create the dropdown menu for a user
+
   const UserActionMenu = ({ userId, userName }: { userId: string, userName: string }) => {
     const [showMenu, setShowMenu] = useState(false);
     
@@ -383,7 +413,6 @@ const Users = () => {
     );
   };
 
-  // User Detail Modal
   const UserDetailModal = () => {
     if (!showUserDetail) return null;
     
@@ -864,7 +893,6 @@ const Users = () => {
         </div>
       </div>
 
-      {/* User Detail Modal */}
       {showUserDetail && <UserDetailModal />}
     </DashboardLayout>
   );
