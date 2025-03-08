@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChartComponent } from "@/components/charts/BarChartComponent";
 import { useSalesByCategory, useSalesData } from "@/lib/supabase-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
+import { CsvUploader } from "@/components/CsvUploader";
 import {
   Download,
   FileText,
@@ -18,6 +21,7 @@ import {
   Check,
   File,
   FileSpreadsheet,
+  UploadCloud,
 } from "lucide-react";
 
 import {
@@ -29,6 +33,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Report {
   id: number;
@@ -39,14 +45,17 @@ interface Report {
 
 const Reports = () => {
   const { toast } = useToast();
-  const { data: categoryData = [], isLoading, error } = useSalesByCategory();
-  const { data: salesData = [], isLoading: isSalesLoading } = useSalesData();
+  const { data: supabaseCategoryData = [], isLoading, error } = useSalesByCategory();
+  const { data: supabaseSalesData = [], isLoading: isSalesLoading } = useSalesData();
+  const { salesData, categoryData, setSalesData, setCategoryData, hasUploadedData } = useData();
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState("PDF");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [filters, setFilters] = useState({
     category: "all",
     minAmount: "",
@@ -59,16 +68,21 @@ const Reports = () => {
     { id: 3, name: "Q3 Sales Report", date: "3 days ago", format: "CSV" },
   ]);
   
-  const categories = ["all", ...new Set(salesData.map(sale => sale.category))];
+  // Use either the uploaded data or supabase data
+  const effectiveSalesData = salesData.length > 0 ? salesData : supabaseSalesData;
+  const effectiveCategoryData = categoryData.length > 0 ? categoryData : supabaseCategoryData;
+  
+  // Extract categories from sales data
+  const categories = ["all", ...new Set(effectiveSalesData.map(sale => sale.category))];
   
   useEffect(() => {
-    if (categoryData.length > 0) {
+    if (effectiveCategoryData.length > 0) {
       applyFilters();
     }
-  }, [categoryData, filters]);
+  }, [effectiveCategoryData, filters]);
   
   const applyFilters = () => {
-    let filtered = [...categoryData];
+    let filtered = [...effectiveCategoryData];
     
     if (filters.category !== "all") {
       filtered = filtered.filter(item => item.name === filters.category);
@@ -92,6 +106,33 @@ const Reports = () => {
       variant: "destructive",
     });
   }
+
+  const handleSalesDataLoaded = (data: any[]) => {
+    setSalesData(data);
+    
+    // Process sales data to group by category for chart
+    const categoryMap = new Map<string, number>();
+    
+    data.forEach(sale => {
+      const category = sale.category;
+      const amount = Number(sale.amount);
+      
+      if (categoryMap.has(category)) {
+        categoryMap.set(category, categoryMap.get(category)! + amount);
+      } else {
+        categoryMap.set(category, amount);
+      }
+    });
+    
+    // Convert map to array of objects for the chart
+    const chartData = Array.from(categoryMap.entries()).map(([name, value]) => ({
+      name,
+      value
+    }));
+    
+    setCategoryData(chartData);
+    setShowUploadDialog(false);
+  };
 
   const generateReport = async () => {
     setIsGenerating(true);
@@ -255,6 +296,26 @@ const Reports = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Upload CSV
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Upload Sales Data</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <CsvUploader 
+                    onDataLoaded={handleSalesDataLoaded} 
+                    type="sales"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <div className="relative">
               <button 
                 className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
@@ -415,17 +476,31 @@ const Reports = () => {
               </div>
             </div>
             
-            {isLoading ? (
+            {isLoading && !hasUploadedData ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <>
-                <BarChartComponent data={filteredChartData.length > 0 ? filteredChartData : categoryData} />
-                {filteredChartData.length === 0 && categoryData.length > 0 && (
-                  <div className="flex justify-center mt-4">
-                    <p className="text-sm text-muted-foreground">No data matches the selected filters</p>
+                {effectiveCategoryData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="font-medium text-lg mb-2">No Sales Data Available</h3>
+                    <p className="text-muted-foreground mb-4">Upload a CSV file to see sales analytics.</p>
+                    <Button onClick={() => setShowUploadDialog(true)}>
+                      <UploadCloud className="mr-2 h-4 w-4" />
+                      Upload CSV
+                    </Button>
                   </div>
+                ) : (
+                  <>
+                    <BarChartComponent data={filteredChartData.length > 0 ? filteredChartData : effectiveCategoryData} />
+                    {filteredChartData.length === 0 && effectiveCategoryData.length > 0 && (
+                      <div className="flex justify-center mt-4">
+                        <p className="text-sm text-muted-foreground">No data matches the selected filters</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

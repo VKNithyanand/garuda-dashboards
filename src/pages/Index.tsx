@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/StatsCard";
@@ -6,6 +7,8 @@ import { NLPQueryInput } from "@/components/NLPQueryInput";
 import { PredictiveAnalytics } from "@/components/PredictiveAnalytics";
 import { useSalesData, useCustomers, subscribeToSalesUpdates } from "@/lib/supabase-client";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
+import { CsvUploader } from "@/components/CsvUploader";
 import {
   LineChart as LineChartIcon,
   BarChart as BarChartIcon,
@@ -15,6 +18,7 @@ import {
   ShoppingCart,
   TrendingUp,
   Loader2,
+  UploadCloud,
 } from "lucide-react";
 import {
   LineChart,
@@ -26,6 +30,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface SaleWithCustomer {
   id: string;
@@ -37,12 +43,18 @@ interface SaleWithCustomer {
 
 const Index = () => {
   const { toast } = useToast();
-  const { data: salesData = [], isLoading: isSalesLoading, error: salesError } = useSalesData();
-  const { data: customers = [], isLoading: isCustomersLoading } = useCustomers();
+  const { data: supabaseSalesData = [], isLoading: isSalesLoading, error: salesError } = useSalesData();
+  const { data: supabaseCustomers = [], isLoading: isCustomersLoading } = useCustomers();
+  const { salesData, customersData, setSalesData, setCustomersData, hasUploadedData } = useData();
   const [recentSales, setRecentSales] = useState<SaleWithCustomer[]>([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  
+  // Use either uploaded data or supabase data
+  const effectiveSalesData = salesData.length > 0 ? salesData : supabaseSalesData;
+  const effectiveCustomers = customersData.length > 0 ? customersData : supabaseCustomers;
   
   // Process sales data for the chart
-  const processedSalesData = salesData.slice(0, 7).map(sale => ({
+  const processedSalesData = effectiveSalesData.slice(0, 7).map(sale => ({
     month: new Date(sale.transaction_date).toLocaleString('default', { month: 'short' }),
     revenue: Number(sale.amount),
   }));
@@ -66,21 +78,21 @@ const Index = () => {
   
   // Generate recent sales data
   useEffect(() => {
-    if (salesData.length > 0 && customers.length > 0) {
+    if (effectiveSalesData.length > 0 && effectiveCustomers.length > 0) {
       // Get the 5 most recent sales
-      const sortedSales = [...salesData].sort((a, b) => 
+      const sortedSales = [...effectiveSalesData].sort((a, b) => 
         new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
       ).slice(0, 5);
       
       // Map sales to include customer information
       const mappedSales = sortedSales.map(sale => {
-        const customer = customers.find(c => c.id === sale.customer_id) || {
+        const customer = effectiveCustomers.find(c => c.id === sale.customer_id) || {
           name: "Anonymous",
           email: "anonymous@example.com"
         };
         
         return {
-          id: sale.id,
+          id: sale.id || String(Math.random()),
           name: customer.name,
           email: customer.email,
           amount: Number(sale.amount).toLocaleString('en-US', {
@@ -93,7 +105,7 @@ const Index = () => {
       
       setRecentSales(mappedSales);
     }
-  }, [salesData, customers]);
+  }, [effectiveSalesData, effectiveCustomers]);
   
   if (salesError) {
     toast({
@@ -104,25 +116,83 @@ const Index = () => {
   }
   
   // Calculate total revenue
-  const totalRevenue = salesData.reduce((sum, sale) => sum + Number(sale.amount), 0);
+  const totalRevenue = effectiveSalesData.reduce((sum, sale) => sum + Number(sale.amount), 0);
   
   // Calculate active users (just using customers count for demo)
-  const activeUsers = customers.length;
+  const activeUsers = effectiveCustomers.length;
   
   // Calculate sales count
-  const salesCount = salesData.length;
+  const salesCount = effectiveSalesData.length;
   
   // Calculate growth (using a random value for demo)
   const growth = 12.4;
 
+  const handleSalesDataLoaded = (data: any[]) => {
+    setSalesData(data);
+    setShowUploadDialog(false);
+    
+    toast({
+      title: "Sales Data Uploaded",
+      description: `Successfully loaded ${data.length} sales records.`,
+    });
+  };
+
+  const handleCustomersDataLoaded = (data: any[]) => {
+    setCustomersData(data);
+    setShowUploadDialog(false);
+    
+    toast({
+      title: "Customer Data Uploaded",
+      description: `Successfully loaded ${data.length} customer records.`,
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-fade-up">
-        <div>
-          <h1 className="font-semibold text-2xl tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">
-            Your business analytics and insights
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="font-semibold text-2xl tracking-tight">Overview</h1>
+            <p className="text-muted-foreground">
+              Your business analytics and insights
+            </p>
+          </div>
+          
+          <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Upload Data
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[550px]">
+              <DialogHeader>
+                <DialogTitle>Upload Your Data</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-6 py-4">
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Sales Data</h3>
+                  <CsvUploader 
+                    onDataLoaded={handleSalesDataLoaded} 
+                    type="sales"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    CSV should include: product, category, amount, date fields
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Customer Data</h3>
+                  <CsvUploader 
+                    onDataLoaded={handleCustomersDataLoaded} 
+                    type="customers"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    CSV should include: name, email fields
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -155,9 +225,19 @@ const Index = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <div className="dashboard-card md:col-span-4">
             <h3 className="font-medium">Revenue Over Time</h3>
-            {isSalesLoading ? (
+            {isSalesLoading && !hasUploadedData ? (
               <div className="flex items-center justify-center h-[300px]">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : effectiveSalesData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[300px]">
+                <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg mb-2">No Sales Data Available</h3>
+                <p className="text-muted-foreground mb-4">Upload a CSV file to see sales analytics.</p>
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Upload Data
+                </Button>
               </div>
             ) : (
               <div className="h-[300px] mt-4">
@@ -192,9 +272,19 @@ const Index = () => {
           </div>
           <div className="dashboard-card md:col-span-3">
             <h3 className="font-medium">Recent Sales</h3>
-            {isCustomersLoading ? (
+            {isCustomersLoading && !hasUploadedData ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : recentSales.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg mb-2">No Recent Sales</h3>
+                <p className="text-muted-foreground mb-4">Upload data to see recent sales.</p>
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Upload Data
+                </Button>
               </div>
             ) : (
               <div className="mt-4">
