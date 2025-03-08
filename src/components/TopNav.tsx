@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Search, Menu, Sun, Moon, X } from "lucide-react";
+import { Bell, Menu, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -159,14 +159,7 @@ export const TopNav = ({ setSidebarOpen, sidebarOpen }: TopNavProps) => {
       </button>
       
       <div className="w-full flex items-center justify-between">
-        <div className="relative w-full max-w-md hidden md:flex">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="search"
-            placeholder="Search..."
-            className="w-full bg-background border border-input pl-8 py-2 text-sm rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
+        <div className="flex-1"></div>
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -246,29 +239,12 @@ export const TopNav = ({ setSidebarOpen, sidebarOpen }: TopNavProps) => {
                           {notification.time}
                         </p>
                       </div>
-                      <div className="flex flex-shrink-0">
-                        {!notification.read && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 w-6 p-0" 
-                            onClick={() => markAsRead(notification.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </PopoverContent>
           </Popover>
-          
-          <Avatar>
-            <AvatarImage src="/placeholder.svg" />
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
         </div>
       </div>
     </header>
