@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { processNLPQuery } from "@/lib/api";
-import { Brain, Loader2, UploadCloud, RefreshCw, Mic, Info } from "lucide-react";
+import { Brain, Loader2, RefreshCw, Mic, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { QuerySuggestions } from "./QuerySuggestions";
 import { QueryHistory } from "./QueryHistory";
@@ -23,13 +24,6 @@ export const QueryInput = () => {
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const { hasUploadedData } = useData();
   const [recognitionStatus, setRecognitionStatus] = useState<RecognitionStatus>('inactive');
-  const [suggestions] = useState([
-    "Show revenue trends by quarter",
-    "Identify top-performing marketing channels",
-    "Analyze customer engagement metrics",
-    "Compare campaign conversion rates",
-    "Find growth opportunities in current market"
-  ]);
   const [showExamples, setShowExamples] = useState(false);
   const [exampleQueries] = useState([
     "Show revenue trends by quarter",
@@ -151,18 +145,42 @@ export const QueryInput = () => {
             <Brain className="h-4 w-4" />
             <h3 className="font-medium">AI Query Assistant</h3>
           </div>
-          {queryHistory.length > 0 && (
+          <div className="flex items-center gap-2">
             <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleClearHistory}
+              variant="outline" 
+              onClick={() => setShowExamples(!showExamples)}
+              size="sm"
               className="text-xs"
             >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Clear History
+              {showExamples ? "Hide Examples" : "Show Examples"}
             </Button>
-          )}
+            {queryHistory.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClearHistory}
+                className="text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Clear History
+              </Button>
+            )}
+          </div>
         </div>
+        
+        {showExamples && (
+          <div className="grid gap-2 mb-4 p-4 bg-secondary/20 rounded-lg">
+            <h3 className="font-medium">Try these example queries:</h3>
+            <ul className="space-y-2">
+              {exampleQueries.map((query, index) => (
+                <li key={index} className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
+                  <span>{query}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         
         {!hasUploadedData ? (
           <div className="flex flex-col items-center justify-center py-8">
@@ -239,9 +257,9 @@ export const QueryInput = () => {
               </div>
             </form>
 
-            {!isLoading && !result && (
+            {!isLoading && !result && !showExamples && (
               <QuerySuggestions 
-                suggestions={suggestions}
+                suggestions={exampleQueries.slice(0, 5)}
                 onSuggestionClick={handleSuggestionClick}
               />
             )}
