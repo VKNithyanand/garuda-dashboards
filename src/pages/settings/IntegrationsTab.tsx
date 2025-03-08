@@ -1,8 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Globe, Loader2, Plus, X } from "lucide-react";
+import { Globe, Loader2, Plus, X, Check } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUpdateUserSettings } from "@/lib/supabase-client";
 
 interface IntegrationsTabProps {
   userId: string | undefined;
@@ -13,52 +15,111 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [connectedApps, setConnectedApps] = useState([
-    { name: "Google Calendar", connected: true },
-    { name: "Microsoft Office", connected: false },
-    { name: "Slack", connected: true },
-    { name: "Dropbox", connected: false },
-    { name: "Trello", connected: false },
+    { id: "google-calendar", name: "Google Calendar", connected: false, icon: "G" },
+    { id: "microsoft-office", name: "Microsoft Office", connected: false, icon: "M" },
+    { id: "slack", name: "Slack", connected: false, icon: "S" },
+    { id: "dropbox", name: "Dropbox", connected: false, icon: "D" },
+    { id: "trello", name: "Trello", connected: false, icon: "T" },
   ]);
   const [newAppCredentials, setNewAppCredentials] = useState({
     name: 'Google Drive',
     apiKey: '',
     apiSecret: ''
   });
+  
+  const updateUserSettings = useUpdateUserSettings();
 
-  const handleConnectApp = async (appName: string) => {
+  // Load user integration settings
+  useEffect(() => {
+    const loadIntegrations = async () => {
+      if (!userId) return;
+      
+      try {
+        // Attempt to get saved integrations from local storage as fallback
+        const savedIntegrations = localStorage.getItem(`user_${userId}_integrations`);
+        if (savedIntegrations) {
+          const integrationData = JSON.parse(savedIntegrations);
+          
+          // Update our state with saved integration status
+          setConnectedApps(prevApps => 
+            prevApps.map(app => ({
+              ...app,
+              connected: integrationData[app.id] || false
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error loading integrations:", error);
+      }
+    };
+    
+    loadIntegrations();
+  }, [userId]);
+
+  const handleConnectApp = async (appId: string | null) => {
     setIsSaving(true);
     try {
       if (!userId) {
         throw new Error("You need to be logged in to connect apps");
       }
       
-      if (!newAppCredentials.apiKey || !newAppCredentials.apiSecret) {
-        throw new Error("API Key and Secret are required");
+      if (appId === null) {
+        // This is a new app being added
+        if (!newAppCredentials.apiKey || !newAppCredentials.apiSecret) {
+          throw new Error("API Key and Secret are required");
+        }
+        
+        // Create a new app ID based on name
+        appId = newAppCredentials.name.toLowerCase().replace(/\s+/g, '-');
       }
       
       // Simulate API connection
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the local state
+      let updatedApps;
+      if (appId) {
+        updatedApps = connectedApps.map(app => 
+          app.id === appId ? { ...app, connected: true } : app
+        );
+        setConnectedApps(updatedApps);
+      } else {
+        // Add new app to the list
+        const newApp = { 
+          id: appId || newAppCredentials.name.toLowerCase().replace(/\s+/g, '-'), 
+          name: newAppCredentials.name, 
+          connected: true,
+          icon: newAppCredentials.name.charAt(0)
+        };
+        updatedApps = [...connectedApps, newApp];
+        setConnectedApps(updatedApps);
+      }
+      
+      // Save to local storage as fallback
+      const integrationData = updatedApps.reduce((acc, app) => {
+        acc[app.id] = app.connected;
+        return acc;
+      }, {} as Record<string, boolean>);
+      
+      localStorage.setItem(`user_${userId}_integrations`, JSON.stringify(integrationData));
+      
+      // Save to Supabase if available
+      if (updateUserSettings) {
+        await updateUserSettings.mutateAsync({
+          userId,
+          settings: {
+            integrations: integrationData
+          }
+        });
+      }
       
       toast({
         title: "App Connected",
-        description: `Successfully connected to ${appName || newAppCredentials.name}`,
+        description: `Successfully connected to ${appId ? connectedApps.find(a => a.id === appId)?.name : newAppCredentials.name}`,
       });
       
-      // Update the local state
-      if (appName) {
-        setConnectedApps(prevApps => 
-          prevApps.map(app => 
-            app.name === appName ? { ...app, connected: true } : app
-          )
-        );
-      } else {
-        // Add new app to the list
-        setConnectedApps(prevApps => [
-          ...prevApps,
-          { name: newAppCredentials.name, connected: true }
-        ]);
-        
-        // Reset form
+      // Reset form if adding new app
+      if (!appId) {
         setNewAppCredentials({
           name: 'Google Drive',
           apiKey: '',
@@ -69,7 +130,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
     } catch (error: any) {
       toast({
         title: "Connection Failed",
-        description: error.message || `Failed to connect to ${appName || newAppCredentials.name}`,
+        description: error.message || `Failed to connect the app`,
         variant: "destructive",
       });
     } finally {
@@ -78,7 +139,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
     }
   };
 
-  const handleDisconnectApp = async (appName: string) => {
+  const handleDisconnectApp = async (appId: string) => {
     setIsSaving(true);
     try {
       if (!userId) {
@@ -86,24 +147,41 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
       }
       
       // Simulate disconnecting from the app
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Update the local state
+      const updatedApps = connectedApps.map(app => 
+        app.id === appId ? { ...app, connected: false } : app
+      );
+      setConnectedApps(updatedApps);
+      
+      // Save to local storage
+      const integrationData = updatedApps.reduce((acc, app) => {
+        acc[app.id] = app.connected;
+        return acc;
+      }, {} as Record<string, boolean>);
+      
+      localStorage.setItem(`user_${userId}_integrations`, JSON.stringify(integrationData));
+      
+      // Save to Supabase if available
+      if (updateUserSettings) {
+        await updateUserSettings.mutateAsync({
+          userId,
+          settings: {
+            integrations: integrationData
+          }
+        });
+      }
       
       toast({
         title: "App Disconnected",
-        description: `Successfully disconnected from ${appName}`,
+        description: `Successfully disconnected from ${connectedApps.find(a => a.id === appId)?.name}`,
       });
-      
-      // Update the local state
-      setConnectedApps(prevApps => 
-        prevApps.map(app => 
-          app.name === appName ? { ...app, connected: false } : app
-        )
-      );
       
     } catch (error: any) {
       toast({
         title: "Disconnection Failed",
-        description: error.message || `Failed to disconnect from ${appName}`,
+        description: error.message || `Failed to disconnect the app`,
         variant: "destructive",
       });
     } finally {
@@ -115,28 +193,29 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
     <>
       <div className="space-y-6">
         <div className="flex items-center gap-2 mb-6">
-          <Globe className="h-4 w-4" />
-          <h3 className="font-medium">Integrations</h3>
+          <Globe className="h-5 w-5" />
+          <h3 className="text-lg font-medium">Integrations</h3>
         </div>
         
-        <div className="space-y-6">
-          <p className="text-sm text-muted-foreground">
-            Connect your account to external services for enhanced functionality.
-          </p>
-          
-          {/* Connected Apps */}
-          <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Connected Services</CardTitle>
+            <CardDescription>
+              Connect your account to external services for enhanced functionality
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {connectedApps.map((app) => (
-              <div key={app.name} className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
+              <div key={app.id} className="flex items-center justify-between p-4 rounded-lg border">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-medium">{app.name.charAt(0)}</span>
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-medium">{app.icon}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{app.name}</p>
+                    <p className="font-medium">{app.name}</p>
                     {app.connected ? (
                       <div className="flex items-center mt-1">
-                        <div className="h-2 w-2 rounded-full bg-green-500 mr-2"></div>
+                        <Check className="h-3 w-3 text-green-500 mr-1" />
                         <p className="text-xs text-muted-foreground">Connected</p>
                       </div>
                     ) : (
@@ -148,8 +227,8 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
                   variant={app.connected ? "outline" : "default"}
                   size="sm"
                   onClick={() => app.connected 
-                    ? handleDisconnectApp(app.name) 
-                    : setShowConnectModal(true)
+                    ? handleDisconnectApp(app.id) 
+                    : handleConnectApp(app.id)
                   }
                   disabled={isSaving}
                 >
@@ -163,16 +242,18 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
                 </Button>
               </div>
             ))}
-            
-            <button 
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-input hover:bg-accent transition-colors"
+          </CardContent>
+          <CardFooter>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center gap-2"
               onClick={() => setShowConnectModal(true)}
             >
               <Plus className="h-4 w-4" />
-              <span className="text-sm">Connect New App</span>
-            </button>
-          </div>
-        </div>
+              <span>Connect New Service</span>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
       
       {/* App Connection Modal */}
@@ -233,7 +314,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({ userId }) => {
                   Cancel
                 </Button>
                 <Button 
-                  onClick={() => handleConnectApp('')}
+                  onClick={() => handleConnectApp(null)}
                   disabled={isSaving || !newAppCredentials.apiKey || !newAppCredentials.apiSecret}
                 >
                   {isSaving ? (
