@@ -41,7 +41,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           variant="outline" 
           size="sm" 
           className="gap-2 bg-white shadow-md hover:bg-gray-100 border-brand-blue"
-          onClick={() => window.open('https://www.cricbuzz.com', '_blank')}
+          onClick={() => window.open('https://www.cricbuzz.com', '_self')}
         >
           <ExternalLink className="h-4 w-4 text-brand-blue" />
           <span className="text-brand-blue">Cricbuzz</span>
