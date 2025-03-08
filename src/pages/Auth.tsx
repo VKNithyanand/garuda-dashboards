@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSignIn, useSignUp } from "@/lib/supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, User } from "lucide-react";
 
 const Auth = () => {
   const [isSignIn, setIsSignIn] = useState(true);
