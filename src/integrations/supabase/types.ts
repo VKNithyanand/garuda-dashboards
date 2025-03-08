@@ -90,31 +90,22 @@ export type Database = {
       user_settings: {
         Row: {
           dashboard_layout: Json | null
-          display_name: string | null
           email_notifications: boolean | null
           language: string | null
-          marketing_emails: boolean | null
-          push_notifications: boolean | null
           theme: string | null
           user_id: string
         }
         Insert: {
           dashboard_layout?: Json | null
-          display_name?: string | null
           email_notifications?: boolean | null
           language?: string | null
-          marketing_emails?: boolean | null
-          push_notifications?: boolean | null
           theme?: string | null
           user_id: string
         }
         Update: {
           dashboard_layout?: Json | null
-          display_name?: string | null
           email_notifications?: boolean | null
           language?: string | null
-          marketing_emails?: boolean | null
-          push_notifications?: boolean | null
           theme?: string | null
           user_id?: string
         }
