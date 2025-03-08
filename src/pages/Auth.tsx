@@ -4,15 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, User, LogIn, UserPlus } from "lucide-react";
+import { Mail, Lock, LogIn } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(true); // Default to sign up
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -29,66 +27,25 @@ const Auth = () => {
     checkUser();
   }, [navigate]);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      if (isSignUp) {
-        // Sign up with auto sign-in
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name
-            },
-            emailRedirectTo: window.location.origin
-          }
-        });
-        
-        if (error) throw error;
-        
-        // Check if email confirmation is required
-        if (data?.user?.identities?.length === 0) {
-          toast({
-            title: "Email already registered",
-            description: "Please sign in with your existing account.",
-            variant: "destructive",
-          });
-        } else {
-          console.log("Signup success, session:", data.session);
-          
-          // If auto-confirm is enabled or email verification is not required
-          if (data.session) {
-            toast({
-              title: "Account created successfully!",
-              description: "Redirecting to dashboard...",
-            });
-            navigate("/");
-          } else {
-            toast({
-              title: "Account created!",
-              description: "Please verify your email to complete registration.",
-            });
-          }
-        }
-      } else {
-        // Sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
-        });
-        
-        navigate("/");
-      }
+      // Sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+      
+      navigate("/");
     } catch (error: any) {
       console.error("Auth error:", error);
       toast({
@@ -109,36 +66,14 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">
-            {isSignUp ? "Create an account" : "Welcome back"}
+            Welcome back
           </CardTitle>
           <CardDescription>
-            {isSignUp 
-              ? "Sign up to access all dashboard features" 
-              : "Sign in to your account to continue"
-            }
+            Sign in to your account to continue
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-10"
-                    required={isSignUp}
-                  />
-                </div>
-              </div>
-            )}
-            
+          <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email
@@ -162,11 +97,9 @@ const Auth = () => {
                 <label htmlFor="password" className="text-sm font-medium">
                   Password
                 </label>
-                {!isSignUp && (
-                  <a href="/reset-password" className="text-xs text-brand-blue hover:underline">
-                    Forgot password?
-                  </a>
-                )}
+                <a href="/reset-password" className="text-xs text-brand-blue hover:underline">
+                  Forgot password?
+                </a>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,12 +120,7 @@ const Auth = () => {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-r-transparent" />
-                  {isSignUp ? "Creating account..." : "Signing in..."}
-                </span>
-              ) : isSignUp ? (
-                <span className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Create Account
+                  Signing in...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
@@ -203,18 +131,6 @@ const Auth = () => {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="ml-1 font-medium text-brand-blue hover:underline"
-            >
-              {isSignUp ? "Sign in" : "Sign up"}
-            </button>
-          </div>
-        </CardFooter>
       </Card>
     </div>
   );
