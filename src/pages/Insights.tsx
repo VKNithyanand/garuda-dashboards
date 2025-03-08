@@ -14,9 +14,14 @@ import {
   X,
   BookmarkIcon,
   ChevronDown,
-  Share2
+  Share2,
+  FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
+import { QueryResults } from "@/components/nlp/QueryResults";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Insight {
   id: string;
@@ -29,7 +34,8 @@ interface Insight {
 
 const Insights = () => {
   const { toast } = useToast();
-  const { data: insightsData = [], isLoading, error, refetch } = useInsights();
+  const { salesData, customersData, insightsData } = useData();
+  const { data: fetchedInsights = [], isLoading, error, refetch } = useInsights();
   const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
   const [showInsightDetail, setShowInsightDetail] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,6 +46,11 @@ const Insights = () => {
   const [bookmarkedInsights, setBookmarkedInsights] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [isImplementing, setIsImplementing] = useState(false);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [businessStory, setBusinessStory] = useState<any>(null);
+  const [storyExpanded, setStoryExpanded] = useState(true);
+  
+  const effectiveInsightsData = insightsData.length > 0 ? insightsData : fetchedInsights;
   
   if (error) {
     toast({
@@ -49,7 +60,7 @@ const Insights = () => {
     });
   }
 
-  const filteredInsights = insightsData.filter((insight: Insight) => {
+  const filteredInsights = effectiveInsightsData.filter((insight: Insight) => {
     const matchesSearch = searchTerm === "" || 
       insight.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insight.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -63,8 +74,8 @@ const Insights = () => {
     return matchesSearch && matchesCategory && matchesPriority;
   });
 
-  const categories = ["all", ...Array.from(new Set(insightsData.map((insight: Insight) => insight.category)))];
-  const priorities = ["all", ...Array.from(new Set(insightsData.map((insight: Insight) => insight.priority)))];
+  const categories = ["all", ...Array.from(new Set(effectiveInsightsData.map((insight: Insight) => insight.category)))];
+  const priorities = ["all", ...Array.from(new Set(effectiveInsightsData.map((insight: Insight) => insight.priority)))];
 
   const implementInsight = async (insightId: string) => {
     setIsImplementing(true);
@@ -148,6 +159,46 @@ const Insights = () => {
     }
   };
 
+  const generateBusinessStory = async () => {
+    setIsGeneratingStory(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-business-story", {
+        body: {
+          salesData,
+          customersData,
+          insightsData: effectiveInsightsData,
+          timeframe: "last-quarter"
+        }
+      });
+      
+      if (error) throw error;
+      
+      setBusinessStory({
+        type: "story",
+        summary: "AI-Generated Business Story",
+        data: data.story
+      });
+      
+      toast({
+        title: "Business Story Generated",
+        description: "Your personalized business report is ready to view or download.",
+      });
+    } catch (error: any) {
+      console.error("Error generating business story:", error);
+      toast({
+        title: "Failed to Generate Story",
+        description: error.message || "There was an error generating your business story.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
+  const clearBusinessStory = () => {
+    setBusinessStory(null);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-fade-up">
@@ -159,6 +210,24 @@ const Insights = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={generateBusinessStory}
+              disabled={isGeneratingStory || (!salesData.length && !fetchedInsights.length)}
+              className="flex items-center gap-2"
+            >
+              {isGeneratingStory ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  Generate Business Story
+                </>
+              )}
+            </Button>
             <button
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
               onClick={() => setShowFilters(!showFilters)}
@@ -169,6 +238,17 @@ const Insights = () => {
             </button>
           </div>
         </div>
+
+        {businessStory && (
+          <div className="dashboard-card">
+            <QueryResults 
+              result={businessStory}
+              expanded={storyExpanded}
+              setExpanded={setStoryExpanded}
+              clearResults={clearBusinessStory}
+            />
+          </div>
+        )}
 
         <div className="dashboard-card">
           <div className="relative">
