@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChartComponent } from "@/components/charts/BarChartComponent";
@@ -68,11 +67,9 @@ const Reports = () => {
     { id: 3, name: "Q3 Sales Report", date: "3 days ago", format: "CSV" },
   ]);
   
-  // Use either the uploaded data or supabase data
   const effectiveSalesData = salesData.length > 0 ? salesData : supabaseSalesData;
   const effectiveCategoryData = categoryData.length > 0 ? categoryData : supabaseCategoryData;
   
-  // Extract categories from sales data
   const categories = ["all", ...new Set(effectiveSalesData.map(sale => sale.category))];
   
   useEffect(() => {
@@ -110,7 +107,6 @@ const Reports = () => {
   const handleSalesDataLoaded = (data: any[]) => {
     setSalesData(data);
     
-    // Process sales data to group by category for chart
     const categoryMap = new Map<string, number>();
     
     data.forEach(sale => {
@@ -124,7 +120,6 @@ const Reports = () => {
       }
     });
     
-    // Convert map to array of objects for the chart
     const chartData = Array.from(categoryMap.entries()).map(([name, value]) => ({
       name,
       value
@@ -172,21 +167,22 @@ const Reports = () => {
     
     setIsDownloading(true);
     
+    const data = effectiveCategoryData.length > 0 ? effectiveCategoryData : [];
     let reportData: string;
     
     if (report.format === "CSV") {
       reportData = "Category,Value\n";
-      categoryData.forEach(item => {
+      data.forEach(item => {
         reportData += `${item.name},${item.value}\n`;
       });
     } else if (report.format === "Excel") {
       reportData = "Category,Value\n";
-      categoryData.forEach(item => {
+      data.forEach(item => {
         reportData += `${item.name},${item.value}\n`;
       });
     } else {
       reportData = "SALES REPORT\n\n";
-      categoryData.forEach(item => {
+      data.forEach(item => {
         reportData += `${item.name}: ${item.value}\n`;
       });
     }
@@ -219,21 +215,23 @@ const Reports = () => {
   const handleExport = () => {
     setIsDownloading(true);
     
+    const dataToExport = filteredChartData.length > 0 ? filteredChartData : effectiveCategoryData;
+    
     let exportData: string;
     
     if (selectedFormat === "CSV") {
       exportData = "Category,Value\n";
-      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+      dataToExport.forEach(item => {
         exportData += `${item.name},${item.value}\n`;
       });
     } else if (selectedFormat === "Excel") {
       exportData = "Category,Value\n";
-      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+      dataToExport.forEach(item => {
         exportData += `${item.name},${item.value}\n`;
       });
     } else {
       exportData = "SALES REPORT\n\n";
-      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+      dataToExport.forEach(item => {
         exportData += `${item.name}: ${item.value}\n`;
       });
     }

@@ -1,16 +1,33 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+// Define types for sales and category data
+interface SalesDataItem {
+  id?: string;
+  amount: number;
+  value?: number;
+  product_name?: string;
+  category: string;
+  transaction_date?: string;
+  date?: string;
+  customer_id?: string | null;
+}
+
+interface CategoryDataItem {
+  name: string;
+  value: number;
+}
+
 type DataContextType = {
-  salesData: any[];
+  salesData: SalesDataItem[];
   customersData: any[];
   insightsData: any[];
-  categoryData: any[];
+  categoryData: CategoryDataItem[];
   usersData: any[];
-  setSalesData: (data: any[]) => void;
+  setSalesData: (data: SalesDataItem[]) => void;
   setCustomersData: (data: any[]) => void;
   setInsightsData: (data: any[]) => void;
-  setCategoryData: (data: any[]) => void;
+  setCategoryData: (data: CategoryDataItem[]) => void;
   setUsersData: (data: any[]) => void;
   hasUploadedData: boolean;
   dataSource: string;
@@ -20,10 +37,10 @@ type DataContextType = {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const [salesData, setSalesData] = useState<any[]>([]);
+  const [salesData, setSalesData] = useState<SalesDataItem[]>([]);
   const [customersData, setCustomersData] = useState<any[]>([]);
   const [insightsData, setInsightsData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryDataItem[]>([]);
   const [usersData, setUsersData] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('upload');
 
