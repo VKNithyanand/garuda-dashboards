@@ -43,17 +43,12 @@ const Settings = () => {
       const settings = userSettings as any;
       
       setPreferences({
-        emailNotifications: settings.email_notifications || true,
-        pushNotifications: settings.push_notifications || false,
-        marketingEmails: settings.marketing_emails || false,
+        emailNotifications: settings.email_notifications ?? true,
+        pushNotifications: settings.push_notifications ?? false,
+        marketingEmails: settings.marketing_emails ?? false,
       });
     }
   }, [userSettings]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  };
 
   return (
     <DashboardLayout>

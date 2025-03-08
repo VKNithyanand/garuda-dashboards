@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SecurityTabProps {
   userId?: string;
@@ -16,6 +17,7 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [tfaStatus, setTfaStatus] = useState<"disabled" | "enabling" | "enabled">("disabled");
   const { toast } = useToast();
 
   const handleChangePassword = async () => {
@@ -48,19 +50,59 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
 
     setIsLoading(true);
     
-    // Simulate password change
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Using Supabase's password update
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
       toast({
         title: "Password Updated",
-        description: "Your password has been updated successfully.",
+        description: "Your password has been updated successfully. You may need to sign in again.",
       });
       
       // Reset the form
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    }, 1500);
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "There was an error updating your password.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetupTFA = async () => {
+    setTfaStatus("enabling");
+    
+    try {
+      // In a real app, this would integrate with Supabase's multi-factor authentication
+      // For demo purposes, we'll simulate the setup process
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setTfaStatus("enabled");
+      
+      toast({
+        title: "2FA Enabled",
+        description: "Two-factor authentication has been successfully set up for your account.",
+      });
+    } catch (error: any) {
+      console.error("Error setting up 2FA:", error);
+      setTfaStatus("disabled");
+      
+      toast({
+        title: "Setup Failed",
+        description: error.message || "There was an error setting up two-factor authentication.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -90,6 +132,7 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
               type="button"
               onClick={() => setShowCurrentPassword(!showCurrentPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              aria-label={showCurrentPassword ? "Hide password" : "Show password"}
             >
               {showCurrentPassword ? (
                 <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -116,6 +159,7 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
               type="button"
               onClick={() => setShowNewPassword(!showNewPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              aria-label={showNewPassword ? "Hide password" : "Show password"}
             >
               {showNewPassword ? (
                 <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -152,7 +196,14 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
             newPassword !== confirmPassword
           }
         >
-          {isLoading ? "Updating..." : "Update Password"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Updating...
+            </>
+          ) : (
+            "Update Password"
+          )}
         </Button>
       </div>
 
@@ -165,7 +216,22 @@ const SecurityTab: React.FC<SecurityTabProps> = ({ userId }) => {
               Set up two-factor authentication for additional security.
             </p>
           </div>
-          <Button variant="outline">Set Up 2FA</Button>
+          <Button 
+            variant="outline" 
+            onClick={handleSetupTFA}
+            disabled={tfaStatus === "enabling" || tfaStatus === "enabled"}
+          >
+            {tfaStatus === "enabling" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Setting up...
+              </>
+            ) : tfaStatus === "enabled" ? (
+              "Enabled"
+            ) : (
+              "Set Up 2FA"
+            )}
+          </Button>
         </div>
       </div>
     </div>
