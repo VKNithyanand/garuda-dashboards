@@ -9,9 +9,10 @@ import IntegrationsTab from "./IntegrationsTab";
 import ProfileTab from "./ProfileTab";
 import SecurityTab from "./SecurityTab";
 import SettingsSidebar from "./SettingsSidebar";
+import { useAuthCheck } from "@/hooks/useAuthCheck";
 
 const Settings = () => {
-  const [userId, setUserId] = useState<string | undefined>(undefined);
+  const { user, loading: authLoading } = useAuthCheck();
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -20,21 +21,15 @@ const Settings = () => {
   });
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   
-  // Get the current user
+  // Set user email when authenticated
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        setUserEmail(user.email);
-      }
-    };
-    
-    getUser();
-  }, []);
+    if (user) {
+      setUserEmail(user.email);
+    }
+  }, [user]);
   
   // Get user settings
-  const { data: userSettings, isLoading, refetch } = useUserSettings(userId);
+  const { data: userSettings, isLoading, refetch } = useUserSettings(user?.id);
   
   // Update local state when settings are loaded
   useEffect(() => {
@@ -49,6 +44,17 @@ const Settings = () => {
       });
     }
   }, [userSettings]);
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+          <span className="ml-2">Verifying authentication...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -67,13 +73,13 @@ const Settings = () => {
           <div className="dashboard-card md:col-span-5">
             {activeSettingsTab === "profile" && (
               <ProfileTab 
-                userId={userId}
+                userId={user?.id}
                 userEmail={userEmail}
               />
             )}
             
             {activeSettingsTab === "security" && (
-              <SecurityTab userId={userId} />
+              <SecurityTab userId={user?.id} />
             )}
             
             {activeSettingsTab === "notifications" && (
@@ -83,7 +89,7 @@ const Settings = () => {
                 </div>
               ) : (
                 <NotificationsTab 
-                  userId={userId}
+                  userId={user?.id}
                   userEmail={userEmail}
                   preferences={preferences}
                   setPreferences={setPreferences}
@@ -93,7 +99,7 @@ const Settings = () => {
             )}
             
             {activeSettingsTab === "integrations" && (
-              <IntegrationsTab userId={userId} />
+              <IntegrationsTab userId={user?.id} />
             )}
           </div>
         </div>
