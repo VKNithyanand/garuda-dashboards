@@ -1,14 +1,14 @@
 
 import { useEffect } from "react";
-import { useRouter } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 // This component is now just a redirect to the new settings page
 const Settings = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   
   useEffect(() => {
-    router.navigate("/settings");
-  }, [router]);
+    navigate("/settings");
+  }, [navigate]);
   
   return null;
 };
