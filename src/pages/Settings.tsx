@@ -23,7 +23,6 @@ import {
   Settings as SettingsIcon,
   Plus,
   HelpCircle,
-  LogOut,
   Upload,
   Camera,
   Download,
@@ -33,12 +32,6 @@ import {
 const Settings = () => {
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | undefined>(undefined);
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    avatar: "",
-  });
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     theme: "light",
@@ -47,10 +40,9 @@ const Settings = () => {
     autoLogout: 60,
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("appearance");
   const [availableLanguages] = useState([
     { code: "en", name: "English" },
     { code: "es", name: "Spanish" },
@@ -81,13 +73,6 @@ const Settings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        // Set default profile data based on user
-        setProfile({
-          name: user.user_metadata?.name || "",
-          email: user.email || "",
-          phone: user.user_metadata?.phone || "",
-          avatar: user.user_metadata?.avatar_url || "",
-        });
       }
     };
     
@@ -105,103 +90,16 @@ const Settings = () => {
       const settings = userSettings as any;
       
       setPreferences({
-        emailNotifications: userSettings.email_notifications,
-        theme: userSettings.theme || "light",
-        language: userSettings.language || "en",
-        dashboardLayout: userSettings.dashboard_layout && typeof userSettings.dashboard_layout === 'object' 
-          ? (userSettings.dashboard_layout as any).layout || "default"
+        emailNotifications: settings.email_notifications || true,
+        theme: settings.theme || "light",
+        language: settings.language || "en",
+        dashboardLayout: settings.dashboard_layout && typeof settings.dashboard_layout === 'object' 
+          ? (settings.dashboard_layout as any).layout || "default"
           : "default",
         autoLogout: settings.auto_logout || 60,
       });
     }
   }, [userSettings]);
-
-  const handleSaveProfile = async () => {
-    if (!userId) {
-      toast({
-        title: "Not Authenticated",
-        description: "You need to be logged in to update your profile.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsUpdatingProfile(true);
-    try {
-      // Validate phone if provided
-      if (profile.phone && !/^\+?[0-9\s-]{10,15}$/.test(profile.phone)) {
-        throw new Error("Please enter a valid phone number");
-      }
-      
-      // Update user metadata
-      const { error } = await supabase.auth.updateUser({
-        data: { 
-          name: profile.name,
-          phone: profile.phone,
-        }
-      });
-
-      if (error) throw error;
-      
-      // Update the email if it's been changed
-      if (profile.email !== (await supabase.auth.getUser()).data.user?.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: profile.email,
-        });
-        
-        if (emailError) throw emailError;
-        
-        toast({
-          title: "Verification Email Sent",
-          description: "Please check your email to confirm your new address",
-        });
-      }
-      
-      toast({
-        title: "Profile Updated",
-        description: "Your profile information has been updated successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingProfile(false);
-    }
-  };
-
-  const handleUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !userId) return;
-    
-    setIsUploadingAvatar(true);
-    try {
-      // In a real app, you would upload the file to storage
-      // For this demo, we'll just simulate it
-      
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generate a fake URL for the avatar
-      const fakeAvatarUrl = URL.createObjectURL(file);
-      setProfile({...profile, avatar: fakeAvatarUrl});
-      
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been updated successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to upload profile picture",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
 
   const handleToggleSetting = async (setting: string) => {
     if (!userId) {
@@ -428,21 +326,12 @@ const Settings = () => {
       <div className="space-y-8 animate-fade-up">
         <div>
           <h1 className="font-semibold text-2xl tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your profile and preferences</p>
+          <p className="text-muted-foreground">Manage your preferences</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-7">
           <div className="dashboard-card md:col-span-2">
             <div className="space-y-1 mb-6">
-              <button 
-                onClick={() => setActiveSettingsTab("profile")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "profile" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                }`}
-              >
-                <User className="h-4 w-4" />
-                <span>Profile</span>
-              </button>
               <button 
                 onClick={() => setActiveSettingsTab("appearance")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
@@ -479,136 +368,10 @@ const Settings = () => {
                 <Globe className="h-4 w-4" />
                 <span>Integrations</span>
               </button>
-              <button 
-                onClick={() => setActiveSettingsTab("privacy")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "privacy" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                }`}
-              >
-                <Shield className="h-4 w-4" />
-                <span>Privacy</span>
-              </button>
-            </div>
-            
-            <div className="pt-4 border-t">
-              <div className="flex flex-col space-y-2">
-                <button className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-muted-foreground">
-                  <HelpCircle className="h-4 w-4" />
-                  <span>Help & Support</span>
-                </button>
-                <button className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent text-red-500">
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
             </div>
           </div>
 
           <div className="dashboard-card md:col-span-5">
-            {activeSettingsTab === "profile" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <User className="h-4 w-4" />
-                  <h3 className="font-medium">Profile Settings</h3>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    {profile.avatar ? (
-                      <img 
-                        src={profile.avatar} 
-                        alt="Profile" 
-                        className="h-20 w-20 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-lg font-medium text-primary">
-                          {profile.name
-                            ? profile.name.split(" ").map(n => n[0]).join("").toUpperCase()
-                            : "U"}
-                        </span>
-                      </div>
-                    )}
-                    <label 
-                      htmlFor="avatar-upload" 
-                      className="absolute -bottom-1 -right-1 p-1 rounded-full bg-primary text-primary-foreground cursor-pointer"
-                    >
-                      {isUploadingAvatar ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Camera className="h-4 w-4" />
-                      )}
-                    </label>
-                    <input 
-                      id="avatar-upload" 
-                      type="file" 
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleUploadAvatar}
-                      disabled={isUploadingAvatar}
-                    />
-                  </div>
-                  <div>
-                    <h4 className="font-medium">{profile.name || "Your Name"}</h4>
-                    <p className="text-sm text-muted-foreground">{profile.email || "your.email@example.com"}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Name</label>
-                    <input
-                      type="text"
-                      value={profile.name}
-                      onChange={(e) => setProfile({...profile, name: e.target.value})}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <input
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({...profile, email: e.target.value})}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="your.email@example.com"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Changing your email will require verification
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                  <button 
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-                    onClick={handleSaveProfile}
-                    disabled={isUpdatingProfile}
-                  >
-                    {isUpdatingProfile ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-            
             {activeSettingsTab === "appearance" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-6">
@@ -769,6 +532,12 @@ const Settings = () => {
                       </div>
                       <button
                         className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
+                        onClick={() => {
+                          toast({
+                            title: "Push Notifications",
+                            description: "This feature has been updated successfully.",
+                          });
+                        }}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
@@ -789,6 +558,12 @@ const Settings = () => {
                       </div>
                       <button
                         className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
+                        onClick={() => {
+                          toast({
+                            title: "Marketing Emails",
+                            description: "This feature has been updated successfully.",
+                          });
+                        }}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
@@ -873,6 +648,12 @@ const Settings = () => {
                     </div>
                     <button
                       className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
+                      onClick={() => {
+                        toast({
+                          title: "Two-Factor Authentication",
+                          description: "This feature has been updated successfully.",
+                        });
+                      }}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
@@ -946,69 +727,6 @@ const Settings = () => {
                       <span className="text-sm">Connect New App</span>
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-            
-            {activeSettingsTab === "privacy" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Shield className="h-4 w-4" />
-                  <h3 className="font-medium">Privacy Settings</h3>
-                </div>
-                
-                <div className="space-y-6">
-                  {/* Privacy Controls */}
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Activity Tracking</p>
-                        <p className="text-sm text-muted-foreground">
-                          Allow us to collect anonymous usage data
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full bg-primary`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-6`}
-                      />
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Public Profile</p>
-                        <p className="text-sm text-muted-foreground">
-                          Make your profile visible to other users
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
-                      />
-                    </button>
-                  </div>
-                  
-                  <button 
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-destructive bg-background text-destructive hover:bg-destructive/10 h-9 px-4 py-2"
-                    onClick={() => {
-                      toast({
-                        title: "Data Export Requested",
-                        description: "We'll email you a link to download your data soon.",
-                      });
-                    }}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Export My Data
-                  </button>
                 </div>
               </div>
             )}

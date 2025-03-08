@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChartComponent } from "@/components/charts/BarChartComponent";
@@ -130,31 +129,105 @@ const Reports = () => {
     
     setIsDownloading(true);
     
-    // Simulate file download
-    setTimeout(() => {
-      // In a real application, this would be an actual file download
-      
-      toast({
-        title: "Report Downloaded",
-        description: `${report.name} has been downloaded in ${report.format} format.`,
+    // Create dummy data for the report
+    let reportData: string;
+    
+    if (report.format === "CSV") {
+      // Create CSV content
+      reportData = "Category,Value\n";
+      categoryData.forEach(item => {
+        reportData += `${item.name},${item.value}\n`;
       });
-      
-      setIsDownloading(false);
-    }, 1500);
+    } else if (report.format === "Excel") {
+      // For simplicity, we'll still use CSV for Excel, in a real app you'd use a library
+      reportData = "Category,Value\n";
+      categoryData.forEach(item => {
+        reportData += `${item.name},${item.value}\n`;
+      });
+    } else {
+      // For PDF, we'll just create a text representation
+      reportData = "SALES REPORT\n\n";
+      categoryData.forEach(item => {
+        reportData += `${item.name}: ${item.value}\n`;
+      });
+    }
+    
+    // Create a blob and download it
+    const blob = new Blob([reportData], { 
+      type: report.format === "PDF" 
+        ? "application/pdf" 
+        : report.format === "Excel" 
+          ? "application/vnd.ms-excel" 
+          : "text/csv" 
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${report.name}.${report.format === "PDF" ? "pdf" : report.format === "Excel" ? "xlsx" : "csv"}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setIsDownloading(false);
+    
+    toast({
+      title: "Report Downloaded",
+      description: `${report.name} has been downloaded in ${report.format} format.`,
+    });
   };
 
   const handleExport = () => {
     setIsDownloading(true);
     
-    // Simulate export process
-    setTimeout(() => {
-      toast({
-        title: "Report Exported",
-        description: `Your report has been exported in ${selectedFormat} format.`,
+    // Create dummy data for the export
+    let exportData: string;
+    
+    if (selectedFormat === "CSV") {
+      // Create CSV content
+      exportData = "Category,Value\n";
+      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+        exportData += `${item.name},${item.value}\n`;
       });
-      
-      setIsDownloading(false);
-    }, 1500);
+    } else if (selectedFormat === "Excel") {
+      // For simplicity, we'll still use CSV for Excel, in a real app you'd use a library
+      exportData = "Category,Value\n";
+      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+        exportData += `${item.name},${item.value}\n`;
+      });
+    } else {
+      // For PDF, we'll just create a text representation
+      exportData = "SALES REPORT\n\n";
+      (filteredChartData.length > 0 ? filteredChartData : categoryData).forEach(item => {
+        exportData += `${item.name}: ${item.value}\n`;
+      });
+    }
+    
+    // Create a blob and download it
+    const blob = new Blob([exportData], { 
+      type: selectedFormat === "PDF" 
+        ? "application/pdf" 
+        : selectedFormat === "Excel" 
+          ? "application/vnd.ms-excel" 
+          : "text/csv" 
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Sales_Report_${new Date().toLocaleDateString()}.${selectedFormat === "PDF" ? "pdf" : selectedFormat === "Excel" ? "xlsx" : "csv"}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setIsDownloading(false);
+    
+    toast({
+      title: "Report Exported",
+      description: `Your report has been exported in ${selectedFormat} format.`,
+    });
   };
 
   const clearFilters = () => {
