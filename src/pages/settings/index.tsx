@@ -39,13 +39,10 @@ const Settings = () => {
   // Update local state when settings are loaded
   useEffect(() => {
     if (userSettings) {
-      // Using type assertion to handle dynamic properties
-      const settings = userSettings as any;
-      
       setPreferences({
-        emailNotifications: settings.email_notifications ?? true,
-        pushNotifications: settings.push_notifications ?? false,
-        marketingEmails: settings.marketing_emails ?? false,
+        emailNotifications: userSettings.email_notifications ?? true,
+        pushNotifications: userSettings.push_notifications ?? false,
+        marketingEmails: userSettings.marketing_emails ?? false,
       });
     }
   }, [userSettings]);

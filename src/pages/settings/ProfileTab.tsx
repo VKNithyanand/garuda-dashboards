@@ -36,12 +36,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ userId, userEmail }) => {
         // Get display name from user_settings table
         const { data, error } = await supabase
           .from('user_settings')
-          .select('display_name')
+          .select('*')
           .eq('user_id', userId)
           .single();
           
-        if (data?.display_name) {
-          setDisplayName(data.display_name);
+        if (data) {
+          // Now safely check for display_name, and fallback to empty string if not available
+          setDisplayName(data.display_name || "");
         } else {
           // Check localStorage as a fallback
           const savedDisplayName = localStorage.getItem(`user_${userId}_display_name`);
@@ -133,24 +134,31 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ userId, userEmail }) => {
     setUploadingImage(true);
     
     try {
-      // Create form data to send to edge function
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('userId', userId);
+      // Upload directly to Supabase Storage
+      const filePath = `${userId}/${Date.now()}.${fileExt}`;
       
-      // Upload image using Edge Function
-      const response = await fetch('https://pjgxeexnyculxivmtccj.supabase.co/functions/v1/upload-profile-image', {
-        method: 'POST',
-        body: formData
-      });
+      const { data, error } = await supabase.storage
+        .from('profile_images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
       
-      const result = await response.json();
+      if (error) throw error;
       
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to upload image');
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('profile_images')
+        .getPublicUrl(filePath);
+        
+      if (urlData) {
+        setAvatarUrl(urlData.publicUrl);
+        
+        // Update user metadata with avatar URL
+        await supabase.auth.updateUser({
+          data: { avatar_url: urlData.publicUrl }
+        });
       }
-      
-      setAvatarUrl(result.imageUrl);
       
       toast({
         title: "Image Uploaded",
