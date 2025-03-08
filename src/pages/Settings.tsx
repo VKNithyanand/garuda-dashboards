@@ -10,12 +10,9 @@ import {
   User,
   Globe,
   Shield,
-  Palette,
   Save,
   Loader2,
   Check,
-  Moon,
-  Sun,
   Smartphone,
   BarChart4,
   Clock,
@@ -34,15 +31,15 @@ const Settings = () => {
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
-    theme: "light",
+    pushNotifications: false,
+    marketingEmails: false,
     language: "en",
     dashboardLayout: "default",
     autoLogout: 60,
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState("appearance");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("notifications");
   const [availableLanguages] = useState([
     { code: "en", name: "English" },
     { code: "es", name: "Spanish" },
@@ -61,10 +58,12 @@ const Settings = () => {
     { value: 240, name: "4 hours" },
     { value: 0, name: "Never" },
   ]);
-  const [connectedApps] = useState([
+  const [connectedApps, setConnectedApps] = useState([
     { name: "Google Calendar", connected: true },
     { name: "Microsoft Office", connected: false },
     { name: "Slack", connected: true },
+    { name: "Dropbox", connected: false },
+    { name: "Trello", connected: false },
   ]);
   
   // Get the current user
@@ -91,7 +90,8 @@ const Settings = () => {
       
       setPreferences({
         emailNotifications: settings.email_notifications || true,
-        theme: settings.theme || "light",
+        pushNotifications: settings.push_notifications || false,
+        marketingEmails: settings.marketing_emails || false,
         language: settings.language || "en",
         dashboardLayout: settings.dashboard_layout && typeof settings.dashboard_layout === 'object' 
           ? (settings.dashboard_layout as any).layout || "default"
@@ -122,6 +122,46 @@ const Settings = () => {
           ...preferences,
           emailNotifications: !preferences.emailNotifications,
         });
+        
+        // Send a test notification
+        if (!preferences.emailNotifications) {
+          toast({
+            title: "Test Email Notification Sent",
+            description: "You will receive a test email notification shortly.",
+          });
+        }
+      } else if (setting === "pushNotifications") {
+        updatedSettings.push_notifications = !preferences.pushNotifications;
+        setPreferences({
+          ...preferences,
+          pushNotifications: !preferences.pushNotifications,
+        });
+        
+        // Show push notification
+        if (!preferences.pushNotifications) {
+          toast({
+            title: "Push Notifications Enabled",
+            description: "You will now receive push notifications.",
+          });
+        }
+      } else if (setting === "marketingEmails") {
+        updatedSettings.marketing_emails = !preferences.marketingEmails;
+        setPreferences({
+          ...preferences,
+          marketingEmails: !preferences.marketingEmails,
+        });
+        
+        if (!preferences.marketingEmails) {
+          toast({
+            title: "Marketing Emails Enabled",
+            description: "You have subscribed to marketing emails.",
+          });
+        } else {
+          toast({
+            title: "Marketing Emails Disabled",
+            description: "You have unsubscribed from marketing emails.",
+          });
+        }
       }
       
       // Update in database
@@ -141,35 +181,6 @@ const Settings = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to update setting",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleUpdateTheme = async (theme: string) => {
-    if (!userId) return;
-    
-    setIsSaving(true);
-    try {
-      await updateUserSettings.mutateAsync({
-        userId,
-        settings: { theme },
-      });
-      
-      setPreferences({ ...preferences, theme });
-      
-      toast({
-        title: "Theme Updated",
-        description: `Theme changed to ${theme === "dark" ? "Dark" : "Light"} mode`,
-      });
-      
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update theme",
         variant: "destructive",
       });
     } finally {
@@ -276,10 +287,11 @@ const Settings = () => {
       });
       
       // Update the local state
-      const updatedApps = connectedApps.map(app => 
-        app.name === appName ? { ...app, connected: true } : app
+      setConnectedApps(prevApps => 
+        prevApps.map(app => 
+          app.name === appName ? { ...app, connected: true } : app
+        )
       );
-      // setConnectedApps(updatedApps);
       
     } catch (error: any) {
       toast({
@@ -305,10 +317,11 @@ const Settings = () => {
       });
       
       // Update the local state
-      const updatedApps = connectedApps.map(app => 
-        app.name === appName ? { ...app, connected: false } : app
+      setConnectedApps(prevApps => 
+        prevApps.map(app => 
+          app.name === appName ? { ...app, connected: false } : app
+        )
       );
-      // setConnectedApps(updatedApps);
       
     } catch (error: any) {
       toast({
@@ -332,15 +345,6 @@ const Settings = () => {
         <div className="grid gap-4 md:grid-cols-7">
           <div className="dashboard-card md:col-span-2">
             <div className="space-y-1 mb-6">
-              <button 
-                onClick={() => setActiveSettingsTab("appearance")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
-                  activeSettingsTab === "appearance" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                }`}
-              >
-                <Palette className="h-4 w-4" />
-                <span>Appearance</span>
-              </button>
               <button 
                 onClick={() => setActiveSettingsTab("notifications")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
@@ -368,120 +372,19 @@ const Settings = () => {
                 <Globe className="h-4 w-4" />
                 <span>Integrations</span>
               </button>
+              <button 
+                onClick={() => setActiveSettingsTab("preferences")}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md ${
+                  activeSettingsTab === "preferences" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                }`}
+              >
+                <SettingsIcon className="h-4 w-4" />
+                <span>Preferences</span>
+              </button>
             </div>
           </div>
 
           <div className="dashboard-card md:col-span-5">
-            {activeSettingsTab === "appearance" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Palette className="h-4 w-4" />
-                  <h3 className="font-medium">Appearance</h3>
-                </div>
-                
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Theme */}
-                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Palette className="h-4 w-4" />
-                          <div>
-                            <p className="text-sm font-medium">Appearance</p>
-                            <p className="text-sm text-muted-foreground">
-                              Select your preferred theme
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => handleUpdateTheme("light")}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md ${
-                            preferences.theme === "light" 
-                              ? "bg-primary text-primary-foreground" 
-                              : "bg-card hover:bg-accent"
-                          }`}
-                        >
-                          {preferences.theme === "light" && <Check className="h-4 w-4" />}
-                          <Sun className="h-4 w-4" />
-                          <span>Light</span>
-                        </button>
-                        <button
-                          onClick={() => handleUpdateTheme("dark")}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md ${
-                            preferences.theme === "dark" 
-                              ? "bg-primary text-primary-foreground" 
-                              : "bg-card hover:bg-accent"
-                          }`}
-                        >
-                          {preferences.theme === "dark" && <Check className="h-4 w-4" />}
-                          <Moon className="h-4 w-4" />
-                          <span>Dark</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Language */}
-                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Language</p>
-                          <p className="text-sm text-muted-foreground">
-                            Select your preferred language
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <select
-                          value={preferences.language}
-                          onChange={(e) => handleUpdateLanguage(e.target.value)}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {availableLanguages.map((language) => (
-                            <option key={language.code} value={language.code}>
-                              {language.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    {/* Dashboard Layout */}
-                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
-                      <div className="flex items-center gap-3">
-                        <BarChart4 className="h-4 w-4" />
-                        <div>
-                          <p className="text-sm font-medium">Dashboard Layout</p>
-                          <p className="text-sm text-muted-foreground">
-                            Customize your dashboard view
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <select
-                          value={preferences.dashboardLayout}
-                          onChange={(e) => handleUpdateDashboardLayout(e.target.value)}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {dashboardLayouts.map((layout) => (
-                            <option key={layout.value} value={layout.value}>
-                              {layout.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
             {activeSettingsTab === "notifications" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-6">
@@ -531,16 +434,14 @@ const Settings = () => {
                         </div>
                       </div>
                       <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                        onClick={() => {
-                          toast({
-                            title: "Push Notifications",
-                            description: "This feature has been updated successfully.",
-                          });
-                        }}
+                        onClick={() => handleToggleSetting("pushNotifications")}
+                        disabled={isSaving}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.pushNotifications ? "bg-primary" : "bg-input"}`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
+                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                            preferences.pushNotifications ? "translate-x-6" : "translate-x-1"
+                          }`}
                         />
                       </button>
                     </div>
@@ -557,16 +458,14 @@ const Settings = () => {
                         </div>
                       </div>
                       <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full bg-input`}
-                        onClick={() => {
-                          toast({
-                            title: "Marketing Emails",
-                            description: "This feature has been updated successfully.",
-                          });
-                        }}
+                        onClick={() => handleToggleSetting("marketingEmails")}
+                        disabled={isSaving}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${preferences.marketingEmails ? "bg-primary" : "bg-input"}`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform translate-x-1`}
+                          className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                            preferences.marketingEmails ? "translate-x-6" : "translate-x-1"
+                          }`}
                         />
                       </button>
                     </div>
@@ -651,7 +550,7 @@ const Settings = () => {
                       onClick={() => {
                         toast({
                           title: "Two-Factor Authentication",
-                          description: "This feature has been updated successfully.",
+                          description: "2FA setup wizard will be implemented soon.",
                         });
                       }}
                     >
@@ -661,6 +560,75 @@ const Settings = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+            
+            {activeSettingsTab === "preferences" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <SettingsIcon className="h-4 w-4" />
+                  <h3 className="font-medium">User Preferences</h3>
+                </div>
+                
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Language */}
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center gap-3">
+                        <Globe className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Language</p>
+                          <p className="text-sm text-muted-foreground">
+                            Select your preferred language
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <select
+                          value={preferences.language}
+                          onChange={(e) => handleUpdateLanguage(e.target.value)}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {availableLanguages.map((language) => (
+                            <option key={language.code} value={language.code}>
+                              {language.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* Dashboard Layout */}
+                    <div className="space-y-2 p-4 rounded-lg bg-primary/5">
+                      <div className="flex items-center gap-3">
+                        <BarChart4 className="h-4 w-4" />
+                        <div>
+                          <p className="text-sm font-medium">Dashboard Layout</p>
+                          <p className="text-sm text-muted-foreground">
+                            Customize your dashboard view
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <select
+                          value={preferences.dashboardLayout}
+                          onChange={(e) => handleUpdateDashboardLayout(e.target.value)}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {dashboardLayouts.map((layout) => (
+                            <option key={layout.value} value={layout.value}>
+                              {layout.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             

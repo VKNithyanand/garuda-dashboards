@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts";
@@ -40,6 +41,10 @@ const Analytics = () => {
       category: "Pricing"
     }
   ]);
+  
+  // Track chart data changes for visualization
+  const [salesData, setSalesData] = useState<any>(null);
+  const [categoryData, setCategoryData] = useState<any>(null);
 
   const { data: analyticsData, isLoading, error } = useQuery({
     queryKey: ["analytics", period],
@@ -60,6 +65,14 @@ const Analytics = () => {
       return response.json();
     }
   });
+  
+  // Set initial data when analytics loads
+  useEffect(() => {
+    if (analyticsData) {
+      setSalesData(analyticsData.monthlySalesData);
+      setCategoryData(analyticsData.categoriesData);
+    }
+  }, [analyticsData]);
 
   const handleTakeAction = async (id: string) => {
     try {
@@ -72,23 +85,74 @@ const Analytics = () => {
         )
       );
       
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       let actionMessage = "";
+      let updatedSalesData = [...(salesData || [])];
+      let updatedCategoryData = [...(categoryData || [])];
       
       if (recommendation.category === "Marketing") {
-        actionMessage = "Marketing campaign initiated for " + recommendation.title.split(" ").pop();
+        // Simulate marketing campaign effect - increase sales of electronics
+        actionMessage = "Marketing campaign initiated for Electronics";
+        
+        // Update sales data to reflect the marketing campaign
+        updatedSalesData = updatedSalesData.map(item => {
+          if (item.date === updatedSalesData[updatedSalesData.length - 1].date) {
+            return { ...item, value: item.value * 1.15 }; // 15% increase in latest month
+          }
+          return item;
+        });
+        
+        // Update category data to reflect the marketing campaign
+        updatedCategoryData = updatedCategoryData.map(item => {
+          if (item.name === "Electronics") {
+            return { ...item, value: item.value * 1.15 }; // 15% increase for Electronics
+          }
+          return item;
+        });
+        
       } else if (recommendation.category === "Inventory") {
-        actionMessage = "Restock order placed for " + recommendation.title.split(" ").pop();
+        // Simulate inventory restock effect
+        actionMessage = "Restock order placed for Smartphones";
+        
+        // Inventory restocking doesn't directly affect sales charts immediately
+        toast({
+          title: "Inventory Update",
+          description: "Smartphone inventory restock has been ordered. Shipment will arrive in 3-5 business days.",
+        });
+        
       } else if (recommendation.category === "Pricing") {
-        actionMessage = "Price optimization implemented for " + recommendation.title.split(" ").pop();
+        // Simulate price optimization effect - increase sales volume for accessories
+        actionMessage = "Price optimization implemented for Accessories";
+        
+        // Update category data to reflect the price optimization
+        updatedCategoryData = updatedCategoryData.map(item => {
+          if (item.name === "Accessories") {
+            return { ...item, value: item.value * 1.2 }; // 20% increase for Accessories
+          }
+          return item;
+        });
+        
+        // Small boost in overall sales
+        updatedSalesData = updatedSalesData.map(item => {
+          if (item.date === updatedSalesData[updatedSalesData.length - 1].date) {
+            return { ...item, value: item.value * 1.05 }; // 5% increase in latest month
+          }
+          return item;
+        });
       }
       
+      // Update recommendation status
       setRecommendations(prev => 
         prev.map(rec => 
           rec.id === id ? { ...rec, status: "completed" } : rec
         )
       );
+      
+      // Update chart data to reflect the changes
+      setSalesData(updatedSalesData);
+      setCategoryData(updatedCategoryData);
       
       toast({
         title: "Action Completed",
@@ -178,7 +242,7 @@ const Analytics = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={analyticsData?.monthlySalesData || []}>
+                    <BarChart data={salesData || analyticsData?.monthlySalesData || []}>
                       <XAxis 
                         dataKey="date" 
                         tickFormatter={(value) => {
@@ -208,7 +272,7 @@ const Analytics = () => {
                   <ResponsiveContainer width="100%" height={350}>
                     <PieChart>
                       <Pie
-                        data={analyticsData?.categoriesData || []}
+                        data={categoryData || analyticsData?.categoriesData || []}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -217,7 +281,7 @@ const Analytics = () => {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {(analyticsData?.categoriesData || []).map((entry: any, index: number) => (
+                        {(categoryData || analyticsData?.categoriesData || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
